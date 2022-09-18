@@ -1,0 +1,19 @@
+\section{SpringBoot 注解}
+\subsection{启动注解}
+\subsubsection{@SpringBootApplication}
+
+@SpringBootApplication 表明这是一个 Spring 引导应用程序，默认 SpringBoot 项目的启动类会被该注解修饰。该注解的源代码如下:
+
+\begin{Java}
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Inherited
+@SpringBootConfiguration
+@EnableAutoConfiguration
+@ComponentScan(excludeFilters = { @Filter(type = FilterType.CUSTOM,classes = TypeExcludeFilter.class),
+        @Filter(type = FilterType.CUSTOM, classes =AutoConfigurationExcludeFilter.class) })
+public @interface SpringBootApplication {
+    // ... 此处省略源码
+}
+\end{Java}
