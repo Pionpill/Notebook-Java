@@ -20,10 +20,10 @@
 \usetikzlibrary {shadows}
 \usetikzlibrary {bending}
 
-\title{Spring 笔记}
+\title{Spring Principle}
 \author{
     Pionpill \footnote{笔名：北岸，电子邮件：673486387@qq.com，Github：\url{https://github.com/Pionpill}} \\
-    本文档为作者学习 Spring 时的笔记。\\
+    本文档为作者学习 Spring 理论时的笔记。\\
 }
 
 \date{\today}
@@ -36,6 +36,8 @@
 \noindent\textbf{前言：}
 
 笔者为软件工程系在校本科生，有计算机学科理论基础(操作系统，数据结构，计算机网络，编译原理等)，本人在撰写此笔记时已有 Java 开发经验，基础知识不再赘述。
+
+本书主要参考了 《Spring 揭秘》\footnote{《Spring 揭秘》: 王福强，2009 版}。很遗憾这本书没有再版，市面上也找不到能够替代该书的书籍。
 
 本人的编写及开发环境如下：
 \begin{itemize}
@@ -55,11 +57,10 @@
 \setcounter{page}{1} 
 \pagestyle{fancy}
 
-\part{Spring 基础}
-\chapter{基础概念}
-\import{Parts/Part-1/Chapter-1}{introduction.tex}
-
-\part{Spring Library}
-\chapter{注解}
-\import{Parts/Part-2/Chapter-1}{SpringBoot.tex}
+\part{IoC 容器 与 AOP 框架}
+\chapter{Spring 的 IoC 容器}
+\import{Parts/Part-1/Chapter-1}{IoC-Basic.tex}
+\import{Parts/Part-1/Chapter-1}{IoC-ServiceProvider.tex}
+\import{Parts/Part-1/Chapter-1}{BeanFactory.tex}
+\import{Parts/Part-1/Chapter-1}{ApplicationContext.tex}
 \end{document}

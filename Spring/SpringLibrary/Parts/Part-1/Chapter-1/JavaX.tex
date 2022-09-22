@@ -1,0 +1,112 @@
+\section{JavaX 注解}
+
+这里放一些不是 Spring 系但有关联，在扩展包(Java Extension)中出现的常用注解。
+
+\subsection{Validation 注解}
+
+\subsubsection{@NotNull,@NotEmpty,@NotBlank}
+
+这三个注解均用来哦按段是否为空，分别为:
+\begin{itemize}
+    \item @NotNull: 属性不可以为 null，但可以为空串。
+    \item @NotEmpty: 属性不可以为 null, 且不可以为空串(长度大于0)。
+    \item @NotBlank: 只能作用于 String 类型的属性上，属性不可以为 null，且 trim() 后不可以为空串。
+\end{itemize}
+
+其中 @NotNull 源代码如下:
+\begin{Java}
+@Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
+@Retention(RUNTIME)
+@Repeatable(List.class)
+@Documented
+@Constraint(validatedBy = { })
+public @interface NotNull {
+    String message() default "{javax.validation.constraints.NotNull.message}";
+    Class<?>[] groups() default { };
+    Class<? extends Payload>[] payload() default { };
+    @Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
+    @Retention(RUNTIME)
+    @Documented
+    @interface List {
+        NotNull[] value();
+    }
+}
+\end{Java}
+
+\subsubsection{@Size,@Length,@Max,@Min}
+
+这三个注解均用于判断数值大小/字符串长度:
+\begin{itemize}
+    \item @Min: 验证 Number 和 String 对象是否大于等于指定的值。
+    \item @Max: 验证 Number 和 String 对象是否小于等于指定的值。
+    \item @Size(min=,max=): 验证对象（Array,Collection,Map,String）长度是否在给定范围内。
+    \item @Length(min=,max=): 验证字符串长度是否在给定范围内。
+\end{itemize}
+
+其中 @Size 源代码如下:
+\begin{Java}
+@Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
+@Retention(RUNTIME)
+@Repeatable(List.class)
+@Documented
+@Constraint(validatedBy = { })
+public @interface Size {
+    String message() default "{javax.validation.constraints.Size.message}";
+    Class<?>[] groups() default { };
+    Class<? extends Payload>[] payload() default { };
+    /**
+     * @return size the element must be higher or equal to
+     */
+    int min() default 0;
+    /**
+     * @return size the element must be lower or equal to
+     */
+    int max() default Integer.MAX_VALUE;
+    @Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
+    @Retention(RUNTIME)
+    @Documented
+    @interface List {
+        Size[] value();
+    }
+}
+\end{Java}
+
+\subsubsection{@Digits}
+
+被注解的元素必须为一个数字，其值必须在可接受的范围内。主要参数有两个:
+\begin{itemize}
+    \item integer: 整数部分位数。
+    \item fraction: 小数部分位数。
+\end{itemize}
+
+\begin{Java}
+@Digits(integer = 3,fraction = 0)
+private String ccCVV;
+\end{Java}
+
+\subsubsection{@Valid}
+
+@Valid注解用于校验。\footnote{参考: \url{https://blog.csdn.net/gaojp008/article/details/80583301}}
+
+\begin{Java}
+@Target({ METHOD, FIELD, CONSTRUCTOR, PARAMETER, TYPE_USE })
+@Retention(RUNTIME)
+@Documented
+public @interface Valid {
+}
+\end{Java}
+
+使用校验，首先要在实体类相应字段上添加用于校验的注解。如: @Min。其次在 Controller 层的方法的要校验的参数上添加 @Valid 注解，并且需要传入 BindingResult 对象，用于获取校验失败情况下的反馈信息，代码如下:
+
+\begin{Java}
+@PostMapping("/girls")  
+public Girl addGirl(@Valid Girl girl, BindingResult bindingResult) {  
+    if(bindingResult.hasErrors()){  
+        System.out.println(bindingResult.getFieldError().getDefaultMessage());  
+        return null;  
+    }  
+    return girlResposity.save(girl);  
+}
+\end{Java}
+
+\newpage

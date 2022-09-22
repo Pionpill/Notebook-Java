@@ -1,0 +1,20 @@
+\section{ApplicationContext}
+
+ApplicationContext除了拥有BeanFactory支持的所有功能之外，还进一步扩展了基本容器的功能，包括BeanFactoryPostProcessor、BeanPostProcessor以及其他特殊类型bean的自动识别、容器启动后bean实例的自动初始化、国际化的信息支持、容器内事件发布等。
+
+\subsection{统一资源加载策略}
+
+\subsubsection{Spring 中的 Resource}
+
+Spring框架内部使用 Resource 接口作为所有资源的抽象和访问接口。
+
+Resource接口可以根据资源的不同类型，或者资源所处的不同场合，给出相应的具体实现。Spring框架在这个理念的基础上，提供了一些实现类:
+
+\begin{itemize}
+    \item \textbf{ByteArrayResource}: 将字节（byte）数组提供的数据作为一种资源进行封装，如果通过InputStream形式访问该类型的资源，该实现会根据字节数组的数据，构造相应的ByteArrayInputStream并返回。
+    \item \textbf{ClassPathResource}: 该实现从Java应用程序的ClassPath中加载具体资源并进行封装，可以使用指定的类加载器（ClassLoader）或者给定的类进行资源加载。
+    \item \textbf{FileSystemResource}: 对java.io.File类型的封装，所以，我们可以以文件或者URL的形式对该类型资源进行访问，只要能跟File打的交道，基本上跟FileSystemResource也可以。
+    \item \textbf{UrlResource}: 通过java.net.URL进行的具体资源查找定位的实现类，内部委派URL进行具体的资源操作。
+    \item \textbf{InputStreamResource}: 将给定的InputStream视为一种资源的Resource实现类，较为少用。
+\end{itemize}
+
