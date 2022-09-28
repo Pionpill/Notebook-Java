@@ -71,12 +71,12 @@ Spring 本质是始终不变的，都是为了提供各种服务，以帮助我�
 
 \subsection{IoC 理念}
 
-IoC 全称 Inversion of Control，中文通常翻译为“控制反转”。还有一个别名叫做依赖注入DI（Dependency Injection）。
+IoC 全称 Inversion of Control，中文通常翻译为“控制反转”。IoC 中有一个重要的机制叫依赖注入 DI(Dependency Injection)。
 
 \fbox{
     \parbox{0.87\textwidth}{
         \begin{dispute}
-            原书将 IoC 与依赖注入等同看待，但也有人认为依赖注入是 IoC 的一种方式。本文将两者分开来。
+            原书将 IoC 与DI等同看待，这并不合理，本文抛弃了这种看法。
         \end{dispute}
     }
 }
@@ -85,21 +85,17 @@ IoC 全称 Inversion of Control，中文通常翻译为“控制反转”。还�
 
 \begin{Java}
 public class Provider {
-    private Listener newsListener;      // 依赖对象
-    private Persister newPersistener;   // 依赖对象
+    private Listener newsListener = new NewsListener();      // 依赖对象
+    private Persister newsPersistener = new NewsPersistener();   // 依赖对象
     public void getAndPersistNews () {
         ...
-        for (String newsId : newsIds) {
-            // 抓取与存储内容
-            ...
-        }
     }
 }
 \end{Java}
 
 其中， Provider 需要依赖 newsListener 来抓取内容，并依赖 newPersistener 存储抓取的内容。这两个类被称为 Provider 的依赖类。
 
-如果我们依赖于某个类或服务，最简单而有效的方式就是直接在类的构造函数中新建相应的依赖类。这个过程是我们自己主动去获取依赖的对象。
+如果我们依赖于某个类或服务，最简单而有效的方式就是直接在类的构造函数中 new 相应的依赖类。这个过程是我们自己主动去获取依赖的对象。
 
 可是回头想想，我们自己每次用到什么依赖对象都要主动地去获取，这是否真的必要？我们最终所要做的，其实就是直接调用依赖对象所提供的某项服务而已。只要用到这个依赖对象的时候，它能够准备就绪，我们完全可以不管这个对象是自己找来的还是别人送过来的。如果有人能够在我们需要时将某个依赖对象送过来，为什么还要大费周折地自己去折腾？
 
@@ -121,6 +117,8 @@ public class Provider {
 \end{figure}
 
 通常情况下，被注入对象会直接依赖于被依赖对象。但是，在IoC的场景中，二者之间通过IoC Service Provider来打交道，所有的被注入对象和依赖对象现在由IoC Service Provider统一管理。被注入对象需要什么，直接跟IoC Service Provider招呼一声，后者就会把相应的被依赖对象注入到被注入对象中，从而达到IoC Service Provider为被注入对象服务的目的。IoC Service Provider在这里就是通常的IoC容器所充当的角色。从被注入对象的角度看，与之前直接寻求依赖对象相比，依赖对象的取得方式发生了反转，控制也从被注入对象转到了IoC Service Provider那里。
+
+IoC 容器负责创建的对象，初始化等一系列工作，被创建或被管理的对象在 IoC 容器中统称为 Bean。
 
 \subsection{依赖注入的方式}
 
@@ -145,7 +143,7 @@ public class Provider {
 \begin{Java}
 public FXNewsProvider(IFXNewsListener newsListner,IFXNewsPersister newsPersister) {   
     this.newsListener   = newsListner; 
-    this.newPersistener = newsPersister; 11 
+    this.newPersistener = newsPersister;
 }
 \end{Java}
 

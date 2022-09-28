@@ -43,7 +43,6 @@
 \RequirePackage{bm}                     % 公式加粗
 \RequirePackage{pgf-umlcd}              % 类图
 \RequirePackage{multicol}               % 双栏
-\RequirePackage{pgf-umlcd}              % 类图
 
 % 扩展的表格宏包和插图宏包
 % \RequirePackage{subfig}

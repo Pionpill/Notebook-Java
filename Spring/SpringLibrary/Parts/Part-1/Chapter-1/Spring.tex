@@ -1,26 +1,13 @@
-\section{Spring 注解}
-\subsection{Spring Bean 注解}
+\section{Spring 常用注解}
+\subsection{Spring Bean 基础注解}
 
-\subsubsection{@Configuration}
+这节的前四个个注解功能基本都是一样的，都是将类作为 bean 注入到 spring 容器中进行管理，只不过它们使用的场景不同。后几个注解是对前几个注解的修饰。
 
-声明当前类为配置类，相当于 xml 形式的 Spring 配置。
-
-\begin{Java}
-@Target(ElementType.TYPE)
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
-@Component
-public @interface Configuration {
-    @AliasFor(annotation = Component.class)
-    String value() default "";
-    boolean proxyBeanMethods() default true;
-}
-\end{Java}
-
+选择上，如果确定是 MVC 的哪一层，就选择对应的具体注解(@Controller, @Service, @Repository)标识，如果不确定，但又知道它是各组件，就用 @Component 标识。这四个注解除了可以明确层次关系，没有其他区别。
 
 \subsubsection{@Component}
 
-@Component 标注一个普通的组件类，通知 Spring 将类纳入到 Spring Bean 容器中并进行管理。value不写默认就是类名首字母小写。
+@Component 标注一个普通的组件类，通知 Spring 将类纳入到 Spring Bean 容器中并进行管理。默认定义的 bean 是单例的。可以通过 @Component(“beanName”) @Scope(“prototype”) 改变，下面同样。
 
 \begin{Java}
 @Target(ElementType.TYPE)
@@ -47,223 +34,241 @@ public @interface Controller {
 }
 \end{Java}
 
-\subsection{SpringBoot 注解}
-\subsubsection{@SpringBootApplication}
+\subsubsection{@Service}
 
-@SpringBootApplication 表明这是一个 Spring 引导应用程序，默认 SpringBoot 项目的启动类会被该注解修饰。
+对应 Spring MVC 业务层。主要用于获取 pojo 层的的数据并进行业务处理，
 
 \begin{Java}
 @Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Inherited
-@SpringBootConfiguration
-@EnableAutoConfiguration
-@ComponentScan(excludeFilters = { 
-    @Filter(type = FilterType.CUSTOM,classes = TypeExcludeFilter.class), 
-    @Filter(type = FilterType.CUSTOM, classes =AutoConfigurationExcludeFilter.class) })
-public @interface SpringBootApplication {
-    // ... 此处省略源码
+@Component
+public @interface Service {
+    @AliasFor(annotation = Component.class)
+    String value() default "";
 }
 \end{Java}
 
-可以看出，该注解是由三个注解组成，这里做简单说明，细节请查询相应的注解:
-\begin{itemize}
-    \item @ComponentScan: 自动扫描并加载符合条件的组件。
-    \item @EnableAutoConfiguration: 借助@Import的支持，收集和注册特定场景相关的bean定义。
-    \item @SpringBootConfiguration: 标注当前类是配置类，并会将当前类内声明的一个或多个以@Bean注解标记的方法的实例纳入到spring容器中，并且实例名就是方法名。
-\end{itemize}
+\subsubsection{@Repository}
 
-参考文献:
-\begin{itemize}
-    \item CSDN: \url{https://blog.csdn.net/qq_28289405/article/details/81302498}
-\end{itemize}
+@Repository 对应持久层(pojo)。主要用于直接和数据库交互。
 
-\subsection{Spring Web 注解}
+\begin{Java}
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Component
+public @interface Repository {
+    @AliasFor(annotation = Component.class)
+    String value() default "";
+}
+\end{Java}
 
-\subsubsection{@RequestMapping}
+\subsubsection{@Scope}
 
-作用: 将 Web 请求与请求处理类中的方法进行映射
+@Scope 注解用于指定 Bean 的作用范围，也即采用的设计模式。
 
 \begin{Java}
 @Target({ElementType.TYPE, ElementType.METHOD})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@Mapping
-public @interface RequestMapping {
-    // 省略具体实现
+public @interface Scope {
+    @AliasFor("scopeName")
+	String value() default "";
+	@AliasFor("value")
+	String scopeName() default "";
+    ScopedProxyMode proxyMode() default ScopedProxyMode.DEFAULT;
 }
 \end{Java}
+一般的有两个选项，"singleton" 与 "prototype"，分别代表单例设计模式与原型设计模式。默认采用单例模式。
 
-它有以下的六个配置属性:
-\begin{itemize}
-    \item value: 映射请求的 URL 或者别名。
-    \item method: 兼容HTTP的方法名
-    \item params: 根据HTTP参数的存在、缺省或值对请求进行过滤
-    \item header: 根据HTTP Header的存在、缺省或值对请求进行过滤
-    \item consume: 设定在HTTP请求正文中允许使用的媒体类型
-    \item product: 在HTTP响应体中允许使用的媒体类型
-\end{itemize}
+\subsubsection{@PostConstrucor 与 @PreDestroy}
 
-在使用@RequestMapping之前，请求处理类还需要使用 @Controller 进行标记。
+顾名思义，这两个注解作用的生命周期分别是: 构造方法后和销毁前。对应了 Bean 生命周期的 init-method 和 destroy-method。
 
 \begin{Java}
-@Controller
-@RequestMapping("/home")
-public class HomeController {
-    ......
-}
+@Documented
+@Retention (RUNTIME)
+@Target(METHOD)
+public @interface PostConstruct
+
+@Documented
+@Retention (RUNTIME)
+@Target(METHOD)
+public @interface PreDestroy
+
 \end{Java}
 
-\paragraph*{@GetMapping}
+\subsubsection{@Bean}
 
-用于于处理HTTP GET请求，并将请求映射到具体的处理方法中。具体来说，@GetMapping是一个组合注解，它相当于是@RequestMapping(method=RequestMethod.GET)的快捷方式。下面几个映射注解也类似。
+@Bean 主要用于将一个方法地返返回值注册为 Bean:
 
 \begin{Java}
-@Target(ElementType.METHOD)
+@Target({ElementType.METHOD, ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@RequestMapping(method = RequestMethod.GET)
-public @interface GetMapping {
-    // 省略具体实现
+public @interface Bean
+\end{Java}
+
+为什么要这样设计呢，主要是为了管理外部的 Bean:
+
+\begin{Java}
+@Bean
+public DataSource getDataSource() {
+    DruidDataSource di = new DruidDataSource();
+    ds.setDriverClassName("com.mysql.jdbc.Driver");
+    ...
+    return ds;
 }
 \end{Java}
 
-给个例子，下面几个不给了:
+同时，@Bean 也是自动装配的，如果有形参，容器会自动注入对应类型的形参。
+
+\subsection{Spring Bean 配置注解}
+
+\subsubsection{@Configuration}
+
+声明当前类为配置类，相当于 xml 形式的 Spring 配置。
 
 \begin{Java}
-@Controller
-@RequestMapping("/home")
-public class HomeController {
-    @GetMapping("/users")
-    public List<User> findAllUsers() {
-        List<User> users = userService.findAll();
-        return users;
-    }
-    ......
-}
-\end{Java}
-
-\paragraph*{@PostMapping}
-
-注解用于处理HTTP POST请求。
-
-\begin{Java}
-@Target(ElementType.METHOD)
+@Target(ElementType.TYPE)
 @Retention(RetentionPolicy.RUNTIME)
 @Documented
-@RequestMapping(method = RequestMethod.POST)
-public @interface PostMapping {
-    // 省略具体实现
-}
-\end{Java}
-
-\paragraph*{@PutMapping}
-
-注解用于处理HTTP PUT请求，
-
-\begin{Java}
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
-@RequestMapping(method = RequestMethod.PUT)
-public @interface PutMapping {
-    // 省略具体实现
-}
-\end{Java}
-
-\paragraph*{@DeleteMapping}
-
-注解用于处理HTTP Delete请求，
-
-\begin{Java}
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
-@RequestMapping(method = RequestMethod.DELETE)
-public @interface DeleteMapping {
-    // 省略具体实现
-}
-\end{Java}
-
-\paragraph*{@PatchMapping}
-
-注解用于处理HTTP PATCH请求，
-
-\begin{Java}
-@Target(ElementType.METHOD)
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
-@RequestMapping(method = RequestMethod.DELETE)
-public @interface DeleteMapping {
-    // 省略具体实现
-}
-\end{Java}
-
-\subsubsection{@ModelAttribute}
-
-@ModelAttribute主要的作用是将数据添加到模型对象中，用于视图页面显示。@ModelAttribute注释的位置不同,和其他注解一起使用时有很多种用法。\footnote{参考文献: \url{https://blog.csdn.net/yue_xx/article/details/105740360}}
-
-\begin{Java}
-@Target({ElementType.PARAMETER, ElementType.METHOD})
-@Retention(RetentionPolicy.RUNTIME)
-@Documented
-public @interface ModelAttribute {
-    @AliasFor("name")
+@Component
+public @interface Configuration {
+    @AliasFor(annotation = Component.class)
     String value() default "";
-    @AliasFor("value")
-    String name() default "";
-    boolean binding() default true;
+    boolean proxyBeanMethods() default true;
 }
 \end{Java}
 
-主要用途可分为注解在方法上和注解在参数上:
-\begin{itemize}
-    \item 用在方法上，@ModelAttribute 注解的方法会在 Controller 每个方法被执行前调用。根据返回值不同也有区分。
-    \begin{itemize}
-        \item void 方法: 一般会在方法的参数中使用 Model 参数，在方法体内将模型数据添加到模型对象中。
+\subsubsection{@ComponentScan}
+
+顾名思义，用来扫描 Component 并批量注册 Bean，默认情况下扫描当前包及子包的 Component，可以自定义扫描位置\footnote{延申文献: \url{https://zhuanlan.zhihu.com/p/520827986}}:
+
 \begin{Java}
-@ModelAttribute 
-public void NoneReturn(@RequestParam String data, Model model) { 
-    model.addAttribute("指定一个名称",data); 
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Documented
+@Repeatable(ComponentScans.class)
+public @interface ComponentScan {
+    @AliasFor("basePackages")
+    String[] value() default {};
+    ......
 }
 \end{Java}
-        \item 具体类型方法: 一般用@ModelAttribute的value属性指定model属性的名称。model属性对应的对象就是方法的返回值。不指定名称，则model属性名就会默认是返回类型的首字母小写。
+
+\subsubsection{@PropertySource}
+
+@PropertySource 注解用于绑定 properties 文件:
+
 \begin{Java}
-@ModelAttribute(name = "tacoOrder")
-public TacoOrder order() {
-    return new TacoOrder();
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+@Repeatable(PropertySources.class)
+public @interface PropertySource {
+    String[] value();
+    ......
 }
 \end{Java}
-        \item @ModdelAttribute和@RequestMapping共同注解一个方法时: 此时方法的返回值并不是表示一个视图名称，而是model属性的值，此时的视图名称就是@RequestMapping中指定的访问路径的最后一层去掉扩展名。
+
+一般的 @PropertySource 作用在 Config 文件上\footnote{延申文献: \url{https://blog.csdn.net/tenghu8888/article/details/119791417}}。
+
+\subsubsection{@Import}
+
+@import 注解用于导入别的注解，当有多个 Config 时，一般在 Spring 的 Config 中导入其他配置文件。
+
 \begin{Java}
-@RequestMapping(value = "指定一个访问路径") 
-@ModelAttribute("指定一个名称") 
-public String Fix() { 
-    return "猛虎蔷薇"; 
-} 
+@Target(ElementType.TYPE)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface Import {
+    Class<?>[] value();
+}
 \end{Java}
-    \end{itemize}
-    \item 标记在方法的参数上，会将客户端传递过来的参数按名称注入到指定对象中，并且会将这个对象自动加入ModelMap中，便于View层使用。
-\end{itemize}
 
-\subsubsection{@SessionAttributes}
-
-若希望在多个请求之间共用数据，则可以在控制器类上标注一个 @SessionAttributes,配置需要在session中存放的数据范围，Spring MVC将存放在model中对应的数据暂存到 HttpSession 中。
+举个例子:
 
 \begin{Java}
-@Target({ElementType.TYPE})
+@Configuration
+@Import
+public class SpringConfig
+\end{Java}
+
+\subsection{Spring DI 注解}
+
+前面 Spring 已经完成了 Bean 的标识与扫描，但这仅仅是将 Bean 装入了 IoC 容器，下面注解实现了 DI。
+
+\subsubsection{@Autowired}
+
+@Autowired 注解顾名思义，进行自动装配，是一个功能十分强大，实现比较复杂，有争议的注解。
+
+\begin{Java}
+@Target({ElementType.CONSTRUCTOR, ElementType.METHOD, ElementType.PARAMETER, ElementType.FIELD, ElementType.ANNOTATION_TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface Autowired {
+    boolean required() default true;
+}    
+\end{Java}
+
+默认情况下，@Autowired 根据类型实现自动装配，构造方法注入和 setter 注入都可以实现。@Autowired 可以直接作用在属性上，而不直接使用 setter 方法注入，它将使用暴力反射的方式将对应的类型注入到属性中\footnote{延申文献: \url{https://blog.csdn.net/Weixiaohuai/article/details/123005140}}。注意，既然使用了暴力反射，就要提供 bean 的无参构造方法。
+
+@Autowired 默认使用也推荐使用类型注入，但类型注入必然会带来问题: 同类型二义性，不知道用哪个。
+
+\subsubsection{@Qualifier}
+
+@Qualifier 用于按名称注入，他必须依赖于 @Autowired 注解。
+
+\begin{Java}
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER, ElementType.TYPE, ElementType.ANNOTATION_TYPE})
 @Retention(RetentionPolicy.RUNTIME)
 @Inherited
 @Documented
-public @interface SessionAttributes {
-    @AliasFor("names")
-    String[] value() default {};
-    @AliasFor("value")
-    String[] names() default {};
-    Class<?>[] types() default {};
+public @interface Qualifier {
+    String value() default "";
 }
 \end{Java}
 
+使用时，必须先给出 @Autowired 注解:
+
+\begin{Java}
+@Autowired
+@Qualifier("bookDao")   // 对应某个 bean 名为 bookDao
+private BookDao bookDao;
+\end{Java}
+
+当然这样有个问题，耦合度高！！！
+
+\subsubsection{@Value}
+
+注意这里是 Spring Framework 里的 @Value 不是 lombok 的 @Value。
+
+@Autowired 有一个缺陷，他只能注入引用类型，注入基本类型\footnote{想念 Python}要依靠 @Value:
+
+\begin{Java}
+@Target({ElementType.FIELD, ElementType.METHOD, ElementType.PARAMETER, ElementType.ANNOTATION_TYPE})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface Value {
+    String value();
+}
+\end{Java}
+
+@Value 一般用于注入 properties 文件的内容。需要结合 @PropertySource 注解使用。
+
+\begin{Java}
+@PropertySource("classpath:jdbc.properties")    // classpath: 可以不加
+public class JdbcProperties {
+    ......
+}
+
+@Repository
+public class BookDao {
+    @Value(${name})     // jdbc.properties 存在字段和 ${} 内容相同
+    private String name;
+}
+\end{Java}
 
 \newpage

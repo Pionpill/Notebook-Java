@@ -1,0 +1,60 @@
+\section{AOP 的基本概念}
+
+AOP 全称 Aspect-Oriented Programming，即面向切面编程，AOP 是基于 OOP 的。Spring AOP 是 Spring 核心框架的重要组成部分，通常认为它与 Spring 的 IoC 容器以及 Spring 框架的其他 JavaEE 服务的集成共同组成了 Spring 框架的质量三角。
+
+\subsection{Spring AOP 概述}
+
+AOP 可以在不惊动原始设计的基础上为其进行功能增强。
+
+日志记录、安全检查、事务管理等系统需求就像一把把刀横切到我们组织良好的各个业务功能模块之上，我面的所有功能模块都必须经过这几个系统。以AOP的行话来说，这些系统需求是系统中的横切关注点(cross-cuting concern)。
+
+举个例子，我对某一块代码运行速度进行检测:
+
+\begin{Java}
+public void save() {
+    Long startTime = System.currentTimeMillis();
+    for (int i=0; i<10000; i++) {
+        System.out.println("book dao save...");
+    }
+    Long endTime = System.currentTimeMillis();
+    Long totalTime = endTime - startTime;
+    System.out.println("万次耗时: " + totalTime + "ms");
+}
+public void update() {
+    System.out.println("book dao update...");
+}
+public void delete() {
+    System.out.println("book dao delete...");
+}
+public void select() {
+    System.out.println("book dao select...");
+}
+\end{Java}
+
+实际上上，只有 for 循环中的那一句语句是需要重新设计的，其他语句完全可以复用。我们可以将这些可复用的部分抽取出来。
+
+\begin{Java}
+public void method() {
+    Long startTime = System.currentTimeMillis();
+    for (int i=0; i<10000; i++) {
+        // 原始操作
+    }
+    Long endTime = System.currentTimeMillis();
+    Long totalTime = endTime - startTime;
+    System.out.println("万次耗时: " + totalTime + "ms");
+}
+\end{Java}
+
+其中，这些被抽取出来的原始方法被称为\textbf{连接点}(JoinPoint)。对于要追加功能的方法，我们称其为\textbf{切入点}(Pointcut)。切人点是连接点，但连接点不一定是切入点，只有需要追加功能的连接点，才是切入点。
+
+可复用的共性功能被称为\textbf{通知}(advice)。通知所在的类被称为\textbf{通知类}。通知和切入点需要进行绑定，好让切入点进入通知执行，通知与切入点的绑定关系称为 \textbf{切面(Aspect)}。通俗一点说，切面就是让切入点知道他去哪里执行，产生一个一一对应关系。
+
+\subsection{Spring AOP 的实现方式}
+
+Spring AOP 属于第二代 AOP\footnote{有兴趣自己查一下 AOP 历史，本文只讲 Spring AOP}，采用动态代理机制和字节码生成技术实现。
+
+\subsubsection{动态代理}
+
+SpringAOP本质上就是采用代理机制实现的，但一般的静态代理模式有一定的缺陷，往往需要手动设置很多个对象。为了解决这个问题，Spring AOP 引入了动态代理。
+
+JDK1.3之后引入了一种称之为动态代理(Dynamic Proxy)的机制。使用该机制，我们可以为指定的接口在系统运行期间动态地生成代理对象。

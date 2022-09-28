@@ -37,7 +37,9 @@
 
 笔者为软件工程系在校本科生，有计算机学科理论基础(操作系统，数据结构，计算机网络，编译原理等)，本人在撰写此笔记时已有 Java 开发经验，基础知识不再赘述。
 
-本书主要参考了 《Spring 揭秘》\footnote{《Spring 揭秘》: 王福强，2009 版}。很遗憾这本书没有再版，市面上也找不到能够替代该书的书籍。
+本书第一节主要参考了 《Spring 揭秘》\footnote{《Spring 揭秘》: 王福强，2009 版}。很遗憾这本书没有再版，市面上也找不到能够替代该书的书籍。其中 AOP 部分参考了CSDN 博主滕青山的笔记\footnote{笔记地址: \url{https://blog.csdn.net/qq_34626094/category_11731455.html}}。
+
+本文重点是 Spring 原理，入门及实战可以参考网上的一些视频教程。
 
 本人的编写及开发环境如下：
 \begin{itemize}
@@ -57,10 +59,13 @@
 \setcounter{page}{1} 
 \pagestyle{fancy}
 
-\part{IoC 容器 与 AOP 框架}
+\part{Spring FrameWork}
 \chapter{Spring 的 IoC 容器}
-\import{Parts/Part-1/Chapter-1}{IoC-Basic.tex}
-\import{Parts/Part-1/Chapter-1}{IoC-ServiceProvider.tex}
-\import{Parts/Part-1/Chapter-1}{BeanFactory.tex}
-\import{Parts/Part-1/Chapter-1}{ApplicationContext.tex}
+\import{Parts/Part-FrameWork/Chapter-IoC}{IoC-Basic.tex}
+\import{Parts/Part-FrameWork/Chapter-IoC}{IoC-ServiceProvider.tex}
+\import{Parts/Part-FrameWork/Chapter-IoC}{BeanFactory.tex}
+\import{Parts/Part-FrameWork/Chapter-IoC}{ApplicationContext.tex}
+\chapter{Spring 的 AOP 框架}
+\import{Parts/Part-FrameWork/Chapter-AOP}{AOP-Basic.tex}
+
 \end{document}

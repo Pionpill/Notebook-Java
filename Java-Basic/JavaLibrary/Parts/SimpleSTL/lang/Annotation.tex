@@ -11,7 +11,7 @@ Java 注解分为三类:
 
 \subsection{标准注解}
 
-\subsubsection{@Override}
+\subsubsection*{@Override}
 
 功能: 检查该方法是否是重写方法，如果发现其父类，或者是引用的接口中没有该方法时，会报编译错误。
 
@@ -23,7 +23,7 @@ public @interface Override {}
 
 用法: 直接放在要重写的函数上，没有参数。
 
-\subsubsection{@Deprecated}
+\subsubsection*{@Deprecated}
 
 功能: 用于标明被修饰的类或类成员、类方法已经废弃、过时，不建议使用。
 
@@ -47,7 +47,7 @@ public @interface Deprecated {
 @Deprecated(since = "1.2", forRemoval = true)
 \end{Java}
 
-\subsubsection{@SuppressWarnings}
+\subsubsection*{@SuppressWarnings}
 
 功能: 用于关闭对类、方法、成员编译时产生的特定警告。
 
@@ -80,7 +80,7 @@ public void addItems(String item){
 }
 \end{Java}
 
-\subsubsection{@FunctionalInterface}
+\subsubsection*{@FunctionalInterface}
 
 用于指示被修饰的接口是函数式接口
 \begin{Java}
@@ -94,7 +94,7 @@ public @interface FunctionalInterface {}
 
 \subsection{元注解}
 
-\subsubsection{@Retention}
+\subsubsection*{@Retention}
 
 定义该注解在哪一个级别可用，在源代码中(SOURCE)、类文件中(CLASS)或者运行时(RUNTIME)。
 
@@ -124,7 +124,7 @@ value 的常见参数如下:
 代码（如 ButterKnife） ，就用 CLASS注解; 如果 只是做一些检查性的操作，比如 @Override 和
  @SuppressWarnings，则 可选用 SOURCE 注解。
 
-\subsubsection{@Documented}
+\subsubsection*{@Documented}
 
 作用: 生成文档信息的时候保留注解，对类作辅助说明。
 
@@ -137,7 +137,7 @@ public @interface Documented {}
 
 如果一个注解@B，被@Documented标注，那么被@B修饰的类，生成文档时，会显示@B。如果@B没有被@Documented标准，最终生成的文档中就不会显示@B。
 
-\subsubsection{@Target}
+\subsubsection*{@Target}
 
 作用: 用于描述注解的使用范围。
 
@@ -163,7 +163,7 @@ ElementType 是一个枚举类型，它定义了被 @Target 修饰的注解可�
     \item ElementType.TYPE\_USE: 任何适用类型的语句中
 \end{itemize}
 
-\subsubsection{@Inherited}
+\subsubsection*{@Inherited}
 
 作用: 子类可以继承父类中的该注解, 自动继承注解类型。 如果注解类型声明中存在 @Inherited 元注解，则注解所修饰类的所有子类都将会继承此注解。
 
@@ -174,7 +174,7 @@ ElementType 是一个枚举类型，它定义了被 @Target 修饰的注解可�
 public @interface Inherited {}
 \end{Java}
 
-\subsubsection{@Repeatable}
+\subsubsection*{@Repeatable}
 
 作用：注解可以重复使用。
 

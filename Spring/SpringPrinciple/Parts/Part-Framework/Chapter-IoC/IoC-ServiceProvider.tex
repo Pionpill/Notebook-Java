@@ -93,3 +93,105 @@ public class FXNewsProvider {
 \end{Java}
 
 通过@Inject，我们指明需要IoC Service Provider通过构造方法注入方式，为FXNewsProvider注入其所依赖的对象。至于余下的依赖相关信息，由框架进行处理。
+
+\subsection{一个例子}
+
+\subsubsection{装入 IoC 容器}
+
+假如没有 Spring，我们编写如下的代码:
+
+\begin{Java}
+// 一个 Service 类
+public class ServiceImpl implement Service {
+    private bookDao = new BookDaoImpl();
+    public void save() { ... }
+}
+
+// 一个 Dao 类
+public class DaoImpl implement Dao {
+    public void save() { ... }
+}
+\end{Java}
+
+
+此时我们要调用 Service 层必须这样做:
+
+\begin{Java}
+// App 主程序
+public class App {
+    public static void main(String[] args) {
+        Service bookService = new ServiceImpl();
+        bookService.save();
+    }
+}
+\end{Java}
+
+有了 Spring，我们可以将类放入到容器中成为 bean，再利用容器获取这些依赖。首先，为了导入 spring 我们需要在 pom 文件中加入如下依赖(XML 形式):
+
+\begin{xml}
+<dependency>
+    <groupId>org.springframework</groupId>
+    <artifactId>spring-context</artifactId>
+    <version>自己选</version>
+</dependency>
+\end{xml}
+
+然后，我们需要在 resources 文件下新建 spring 的 xml 文件，这里命名为 applicationContext.xml:
+
+\begin{xml}
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+<bean id="dao" class="xxx.impl.DaoImpl"/>
+<bean id="service" class="xxx.impl.ServiceImpl"/>
+</beans>
+\end{xml}
+
+这样，我们就将容器的信息配置在了一个 XML 文件中，下面我们通过 IoC 容器实现 App:
+
+\begin{Java}
+public class App2 {
+    public static void main(String[] args) {
+        // 获取 IoC 容器
+        ApplicationContext ctx = new ClassPathXmlApplication("applicationContext");
+        // 通过容器获取 bean
+        BookDao bookDao = (BookDao) ctx.getBean("bookDao");
+        bookDao.save();
+    }
+}
+\end{Java}
+
+这样，我们就实现了容器的基本作用: 将对象注入容器，并通过容器获得。
+
+\subsubsection{实现控制反转}
+
+上一小节实现了 IoC 容器的装载与获取 bean 功能，这节实现DI功能。
+
+\begin{Java}
+// 取消 new 的依赖方式，改用 setter
+public class ServiceImpl implement Service {
+    private bookDao;
+    public void save() { ... }
+
+    public void setBookDao(BookDao bookDao) {
+        this.bookDao = bookDao;
+    }
+}
+\end{Java}
+
+依赖关系写入 XML 文件中，这样也能运行:
+\begin{xml}
+<?xml version="1.0" encoding="UTF-8"?>
+<beans xmlns="http://www.springframework.org/schema/beans"
+       xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+       xsi:schemaLocation="http://www.springframework.org/schema/beans http://www.springframework.org/schema/beans/spring-beans.xsd">
+<bean id="dao" class="xxx.impl.DaoImpl"/>
+<bean id="service" class="xxx.impl.ServiceImpl">
+    <!--配置当前的属性，name 表示属性，ref 表示属于的值-->
+    <property name = "bookDao", ref = "dao">
+</bean>
+</beans>
+\end{xml}
+
+\newpage
