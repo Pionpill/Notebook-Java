@@ -1,4 +1,4 @@
-\section{AOP 的基本概念}
+\section{Spring AOP 的基本概念}
 
 AOP 全称 Aspect-Oriented Programming，即面向切面编程，AOP 是基于 OOP 的。Spring AOP 是 Spring 核心框架的重要组成部分，通常认为它与 Spring 的 IoC 容器以及 Spring 框架的其他 JavaEE 服务的集成共同组成了 Spring 框架的质量三角。
 
@@ -55,6 +55,108 @@ Spring AOP 属于第二代 AOP\footnote{有兴趣自己查一下 AOP 历史，�
 
 \subsubsection{动态代理}
 
-SpringAOP本质上就是采用代理机制实现的，但一般的静态代理模式有一定的缺陷，往往需要手动设置很多个对象。为了解决这个问题，Spring AOP 引入了动态代理。
+SpringAOP本质上就是采用代理机制实现的，但一般的静态代理模式有一定的缺陷，往往需要手动设置很多个对象。为了解决这个问题，Spring AOP 使用了动态代理。
 
 JDK1.3之后引入了一种称之为动态代理(Dynamic Proxy)的机制。使用该机制，我们可以为指定的接口在系统运行期间动态地生成代理对象。
+
+代理模式的实现机制如下:
+
+\begin{figure}[H]
+    \scriptsize
+    \centering
+    \begin{tikzpicture}[scale = 1]
+        \begin{interface}[text width=3cm]{ISubject}{0,0}
+            \operation{+ void request()}
+        \end{interface}
+        \begin{class}[text width=2.5cm]{SubjectProxy}{-2.5,-2.5}
+            \implement{ISubject}
+            \attribute{- ISubject subject}
+            \operation{+ void request()}
+        \end{class}
+        \begin{class}[text width=2.5cm]{SubjectImpl}{2.5,-2.5}
+            \implement{ISubject}
+            \operation{+ void request()}
+        \end{class}
+        \aggregation{SubjectProxy}{1}{}{SubjectImpl}
+    \end{tikzpicture}
+    \caption{代理模式}
+    \label{fig:代理模式}
+\end{figure}
+
+代理类在程序运行时创建的代理方式被成为动态代理。在静态代理中，代理类（RenterProxy）是自己已经定义好了的，在程序运行之前就已经编译完成。而动态代理是在运行时根据我们在Java代码中的“指示”动态生成的。动态代理相较于静态代理的优势在于可以很方便的对代理类的所有函数进行统一管理，如果我们想在每个代理方法前都加一个方法，如果代理方法很多，我们需要在每个代理方法都要写一遍，很麻烦。而动态代理则不需要。\footnote{参考: \url{https://blog.csdn.net/qq_34609889/article/details/85317582}}
+
+Java 实现动态代理需要依靠 \texttt{reflect} 包下提供的 \texttt{Proxy} 类与 \texttt{InvocationHandler} 接口。
+
+首先我们需要定义接口与对应的实现类:
+
+\begin{Java}
+public interface Person {
+    public void rentHouse();
+}
+
+public class Renter implements Person {
+    @Override
+    public void rentHouse() {
+        System.out.println("租客租房成功！");
+    }
+}
+\end{Java}
+
+然后我们需要定义一个实现了 \texttt{InvocationHandler} 接口的类并持有一个被代理的对象，\texttt{InvocationHandler} 中有一个 \texttt{invoke} 方法，所有执行代理对象的方法都会被替换成该方法。然后通过反射在 \texttt{invoke} 方法中执行代理类的方法。在代理过程中，在执行代理类的方法前或后可以执行自己的操作，这就是 Spring AOP 动态代理的主要原理。
+
+\begin{Java}
+public class RenterInvocationHandler<T> implements InvocationHandler {
+    private T target;
+
+    public RenterInvocationHandler(T target) {
+        this.target = target;
+    }
+
+    @Override
+    public Object invoke (Object proxy, Method method, Object[] args) throws Throwable {
+        // 具体的代理方法，这里只是给出一种示例
+        System.out.println("租客和中介交流");
+        Object result = method.invoke(this.target, args);
+        return result;
+    }
+}
+\end{Java}
+
+最后我们通过 \texttt{Proxy} 创建动态代理并运行:
+
+\begin{Java}
+public static void main(String[] args) {
+    Person renter = new Renter();
+    InvocationHandler renterHandler = new RenterInvocationHandler<Person>(renter);
+    Person rentProxy = (Person) Proxy.newProxyInstance(Person.class.getClassLoader(),
+            new Class<?>[]{Person.class}, renterHandler);
+    rentProxy.rentHouse();
+}
+\end{Java}
+
+深入了解我们会发现，java 自动生成了一个前缀为 \$Proxy 的代理类，这个类通过反射获取构造方法，然后创建代理类实例对象。分析源代码我们会发合适呢个调用 \texttt{rentHouse} 方法时的大概流程: 调用 \texttt{RentInvocationHandler} 类的 \texttt{invoke} 方法，\texttt{invoke} 方法又用过反射调用被代理类的 \texttt{rentHouse} 方法。
+
+\subsubsection{动态字节码}
+
+使用动态字节码生成技术扩展对象行为的原理是: 可以对目标对象进行继承扩展，为其生成相应的子类，而子类可以通过覆写来扩展父类的行为，只要将横切逻辑的实现放到子类中，然后让系统使用扩展后的目标对象的子类，就可以达到与代理模式相同的效果。
+
+\begin{figure}[H]
+    \scriptsize
+    \centering
+    \begin{tikzpicture}[scale = 1]
+        \begin{class}[text width = 2cm]{Requestable}{0,0}
+            \operation{+ void resquest()}
+        \end{class}
+        \begin{class}[text width=5cm]{RequestableEnhanceByCGLIBObjectId}{0,-2}
+            \inherit{Requestable}
+        \end{class}
+    \end{tikzpicture}
+    \caption{CGLIB 的继承扩展}
+    \label{fig:CGLIB 的继承扩展}
+\end{figure}
+
+使用继承方式来扩展对象定义，也不能像静态代理模式那样，为每个不同类型的目标对象都单独创建相应的扩展子类。所以，我们要借助 CGLIB 这样的动态字节码生成库，在系统运行期间动态地为目标对象生成相应的扩展子类。
+
+动态字节码可对实现了某种接口的类，或者没有实现任何接口的类进行扩展。
+
+\newpage

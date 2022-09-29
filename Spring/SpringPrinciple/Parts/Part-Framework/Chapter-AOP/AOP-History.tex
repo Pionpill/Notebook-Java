@@ -1,0 +1,56 @@
+\section{Spring AOP 历史}
+
+在动态代理和CGLIB的支持下，SpringAOP框架的实现经过了两代。从Spring的AOP框架第一次发布，到Spring2.0发布之前的AOP实现，是Spring第一-代AOP实现。Spring2.0发布后的AOP实现是第二代。
+
+不过划分归划分，SpringAOP的底层实现机制却一直没变。唯一改变的，是各种AOP概念实体的表现形式以及Spring AOP的使用方式。
+
+\subsection{Spring AOP 一世}
+
+\subsubsection{Spring AOP 中的 Joinpoint}
+
+AOP 的 JoinPoint 可以有许多种类型，如构造方法调用，字段的设置及获取，方法调用，方法执行等。但在 SpringAOP 中，仅支持方法级别的 Joinpoint。但在实际的开发过程中，这已经可以满足 80\% 的需求了。
+
+Sring AOP 这样做的原因有以下几点:
+\begin{itemize}
+    \item Spring AOP 提供一个强大而简单的 AOP 框架，但不会因为追求强大而变得臃肿。
+    \item 对于类中属性(Field)级别的 Joinpoint，如果提供这个级别的拦截支持，那么久破坏了面向对象的封装，而且完全可以通过 setter 和 getter 方法的拦截达到同样的目的。
+    \item 如果应用要求非常特殊，不妨求助于其他 AOP 产品。如 AspectJ。
+\end{itemize}
+
+\subsubsection{Spring AOP 中的 PointCut}
+
+Spring中以接口定义 \texttt{Pointcut} 作为其AOP框架中所有Pointcut的最顶层抽象，该接口定义了两个方法用来帮助捕捉系统中的相应Joinpoint，并提供了一个 \texttt{TruePointcut} 类型实例。
+
+如果 \texttt{Pointcut} 类型为 \texttt{TruePointcut} ，默认会对系统中的所有对象，以及对象上所有被支持的Joinpoint进行匹配。
+
+\texttt{Pointcut} 接口定义如下所示:
+
+\begin{Java}
+public interface Pointcut {
+    ClassFilter getClassFilter();
+    MethodMatcher getMethodMatcher();
+    Pointcut TRUE = TruePointcut.INSTANCE;
+}      
+\end{Java}
+
+其中 \texttt{ClassFilter} 和 \texttt{MethodMatcher} 分别用于匹配将执行织入操作的对象以及相应的方法。之所以将这两个分开，是为了重用不同级别的匹配定义。并且可以在不同的级别或者相同的级别上进行组合操作，或者强制让某个子类覆写相应的方法定义等。
+
+\texttt{ClassFilter} 接口的作用是对\texttt{Joinpoint} 所处的对象进行 \texttt{Class} 级别的类型匹配，定义如下:
+
+\begin{Java}
+public interface ClassFilter {
+    boolean matches(Class clazz);
+    ClassFilter TRUE = 
+}
+\end{Java}
+
+
+
+
+
+
+
+
+
+
+\newpage
