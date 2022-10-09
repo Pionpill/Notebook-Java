@@ -1,6 +1,6 @@
-\section{Spring Web 注解}
+\section{Spring MVC 注解}
 
-\subsection{URL 请求相关}
+\subsection{URL 响应}
 
 \subsubsection{@RequestMapping}
 
@@ -121,6 +121,96 @@ public @interface DeleteMapping {
 }
 \end{Java}
 
+\subsubsection{@ResponseBody}
+
+用于将Controller的方法返回的对象，通过 springmvc 提供的HttpMessageConverter接口转换为指定格式的数据如：json、xml等，通过Response响应给客户端。
+
+\begin{Java}
+@Target({ElementType.TYPE, ElementType.METHOD})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface ResponseBody { }    
+\end{Java}
+
+\subsubsection{@RequestParam}
+
+该注解用于将请求参数绑定到控制器的方法参数上:
+
+\begin{Java}
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface RequestParam {
+    @AliasFor("name")
+    String value() default "";
+    @AliasFor("value")
+    String name() default "";
+    boolean required() default true;
+    String defaultValue() default ValueConstants.DEFAULT_NONE;
+}
+\end{Java}
+
+在参数上加入该注解后有如下效果:
+\begin{itemize}
+    \item 不加该注解的前端和后端参数名需要一致。
+    \item 加该注解的参数为必传参数，不加为非必传，也可通过 \texttt{required = false} 设置为非必传。
+    \item 可以通过 \texttt{value} 指定参数名。
+    \item 可以通过 \texttt{defaultValue} 指定参数默认值。
+\end{itemize}
+
+\subsubsection{@RequestBody}
+
+用于将请求中请求体包含的数据传递给请求参数，一个处理器方法只能使用一次:
+
+\begin{Java}
+@Target(ElementType.PARAMETER)
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface RequestBody {
+    boolean required() default true;
+}
+\end{Java}
+
+
+\subsubsection{@EnableWebMvc}
+
+该注解可以开启 SpringMVC 多项辅助功能:
+
+\begin{Java}
+@Retention(RetentionPolicy.RUNTIME)
+@Target(ElementType.TYPE)
+@Documented
+@Import(DelegatingWebMvcConfiguration.class)
+public @interface EnableWebMvc { }
+\end{Java}
+
+\subsubsection{@DateTimeFormat}
+
+该注解用于将传入的 String 类型参数转换为 Data 类型，用于设定日期时间型数据格式。
+
+\begin{Java}
+@Documented
+@Retention(RetentionPolicy.RUNTIME)
+@Target({ElementType.METHOD, ElementType.FIELD, ElementType.PARAMETER, ElementType.ANNOTATION_TYPE})
+public @interface DateTimeFormat {
+    String style() default "SS";
+    ISO iso() default ISO.NONE;
+    String pattern() default "";
+    String[] fallbackPatterns() default {};
+    enum ISO { DATE, TIME, DATE_TIME, NONE }
+}    
+\end{Java}
+
+举个例子:
+
+\begin{Java}
+@DateTimeFormat(pattern="yyyy-MM-dd HH:mm:ss")
+private Date date;
+\end{Java}
+
+
+\subsection{视图}
+
 \subsubsection{@ModelAttribute}
 
 @ModelAttribute主要的作用是将数据添加到模型对象中，用于视图页面显示。@ModelAttribute注释的位置不同,和其他注解一起使用时有很多种用法。\footnote{参考文献: \url{https://blog.csdn.net/yue_xx/article/details/105740360}}
@@ -185,5 +275,12 @@ public @interface SessionAttributes {
     Class<?>[] types() default {};
 }
 \end{Java}
+
+
+
+
+
+
+
 
 \newpage
