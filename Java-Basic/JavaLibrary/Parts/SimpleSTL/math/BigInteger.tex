@@ -1,0 +1,97 @@
+\section{高精度运算}
+\subsection{BigInteger 大整数}
+
+\begin{Java}
+public class BigInteger extends Number implements Comparable<BigInteger>
+\end{Java}
+
+BigInteger 有两个基础属性:
+
+\begin{Java}
+final int signum;     // 存储符号位 1：整  0：0 -1：负
+final int[] mag;      // 存储数据
+\end{Java}
+
+注意这两个属性都是 final 修饰的，这决定了 \texttt{BigInteger} 是不可变对象。
+
+总的来说，BigInteger 的构造函数有两类:
+\begin{Java}
+// 通过数组构造
+public BigInteger(byte[] val, int off, int len)
+public BigInteger(int signum, byte[] magnitude, int off, int len)   // 指定符号位
+// 通过字符串构造
+public BigInteger(String val, int radix)
+\end{Java}
+
+同时还提供了一个静态方法:
+\begin{Java}
+public static BigInteger valueOf(long val)
+\end{Java}
+
+首先看一下加法运算，首先通过 signum 进行了优化，如果符号位不同，则转换为减法运算再处理结果:
+\begin{Java}
+public BigInteger add(BigInteger val) {
+    if (val.signum == 0)
+        return this;
+    if (signum == 0)
+        return val;
+    if (val.signum == signum)
+        return new BigInteger(add(mag, val.mag), signum);
+
+    int cmp = compareMagnitude(val);    // 忽略符号位进行比较
+    if (cmp == 0)
+        return ZERO;
+    int[] resultMag = (cmp > 0 ? subtract(mag, val.mag)
+                       : subtract(val.mag, mag));
+    resultMag = trustedStripLeadingZeroInts(resultMag);
+    return new BigInteger(resultMag, cmp == signum ? 1 : -1);
+}
+\end{Java}
+
+其次是减法运算，运算逻辑类似:
+
+\begin{Java}
+public BigInteger subtract(BigInteger val) {
+    if (val.signum == 0)
+        return this;
+    if (signum == 0)
+        return val.negate();
+    if (val.signum != signum)
+        return new BigInteger(add(mag, val.mag), signum);
+
+    int cmp = compareMagnitude(val);
+    if (cmp == 0)
+        return ZERO;
+    int[] resultMag = (cmp > 0 ? subtract(mag, val.mag)
+                       : subtract(val.mag, mag));
+    resultMag = trustedStripLeadingZeroInts(resultMag);
+    return new BigInteger(resultMag, cmp == signum ? 1 : -1);
+}
+\end{Java}
+
+乘除法运算，在这部分的算法就比较复杂了，只给出扩展文献连接:
+\begin{Java}
+public BigInteger multiply(BigInteger val)
+public BigInteger divide(BigInteger val)
+\end{Java}
+
+\begin{itemize}
+    \item 乘法运算: \url{https://zhuanlan.zhihu.com/p/391716853}
+\end{itemize}
+
+类似的，还提供了一些数字处理的常用方法，没什么好讲的。
+
+\subsection{BigDecimal}
+
+
+
+
+
+
+
+
+
+
+
+
+\newpage
