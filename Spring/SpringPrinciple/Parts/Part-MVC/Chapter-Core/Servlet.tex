@@ -109,7 +109,7 @@ public class HelloHandler {
             \draw [-Stealth, red] ([yshift=4pt]client.east) -- ([yshift=4pt]dispatch.west) node [midway, above, black] {1: Get ``index''};
             \draw [-Stealth, orange] ([yshift=-4pt]dispatch.west) -- ([yshift=-4pt]client.east) node [midway, below, black] {10: 返回 index.html};
             \draw [-Stealth, red] ([yshift=4pt]dispatch.east) -- ([yshift=4pt]map.west) node [midway, above, black] {2: 获取对应 Handler};
-            \draw [-Stealth, red] ([yshift=-4pt]map.west) -- ([yshift=-4pt]dispatch.east) node [midway, below, black] {3: 返回 index};
+            \draw [-Stealth, red] ([yshift=-4pt]map.west) -- ([yshift=-4pt]dispatch.east) node [midway, below, black] {3: 返回 index()};
             \draw [-Stealth, orange] ([xshift=-20pt]dispatch.south) -- ([xshift=-4pt]view.north) node [midway, left, black] {8: 解析 ModelAndView};
             \draw [-Stealth, orange] ([xshift=4pt]view.north) -- ([xshift=-12pt]dispatch.south) node [midway, right, black] {9: 返回 View};
             \draw [-Stealth, blue] ([xshift=12pt]dispatch.south) -- ([xshift=-4pt]adapter.north) node [midway, left, black] {4: 处理};
@@ -335,5 +335,26 @@ processDispatchResult(processedRequest, response, mappedHandler, mv, dispatchExc
 另外View和ViewResolver的原理与Handler和HandlerMapping的原理类似。View是用来展示数据的，而ViewResolver用来查找View。View里面的内容就是Model。
 
 \subsubsection{doDispatch 结构}
+
+doDispatch 大体可分为两部分: 处理请求(Handler)和渲染页面(View)。大致的实现逻辑如下:
+\begin{itemize}
+    \item 检查是不是上传请求，如果是上传请求，则将request转换为MultipartHttpServletRequest，并将multipartRequestParsed标志设置为true。其中使用到了MultipartResolver。
+    \item 通过getHandler方法获取Handler处理器链，其中使用到了HandlerMapping，返回值为HandlerExecutionChain类型，其中包含着与当前request相匹配的Interceptor和Handler。
+    \item 接下来是处理GET、HEAD请求的Last-Modified。浏览器第一次请求资源（GET、Head请求）时，返回的请求头里面会包含一个Last-Modified的属性，在浏览器以后发送请求时会同时发送之前接收到的Last-Modified，服务器接收到带Last-Modified的请求后会用其值和自己实际资源的最后修改时间做对比，判断是否需要更新。
+    \item 接下来依次调用相应Interceptor的preHandle。
+    \item 处理完成后，让HandlerAdapter使用Handler处理请求，Controller就是在这个地方执行的。这里主要使用了HandlerAdapter。
+    \item Handler处理完请求后，如果需要异步处理，则直接返回，如果不需要异步处理，当view为空时（如Handler返回值为void），设置默认view，然后执行相应Interceptor的postHandle。设置默认view的过程中使用到了ViewNameTranslator。
+    \item 到这里请求处理的内容就完成了，接下来使用processDispatchResult方法处理前面返回的结果，其中包括处理异常、渲染页面、触发Interceptor的afterCompletion方法三部分内容。
+\end{itemize}
+
+doDispatch 方法的具体实现比较复杂，涉及到很多组件，现在知道他是干什么的就行了。
+
+\begin{figure}[H]
+    \centering
+    \includegraphics[width=0.9\linewidth]{../../../imgs/uml/doDispatch.png}
+    \caption{doDispatch 方法处理流程(源自：<<看透 Spring MVC: 源代码分析与实践>>)}
+    \label{fig:doDispatch 方法处理流程}
+\end{figure}
+
 
 \newpage
