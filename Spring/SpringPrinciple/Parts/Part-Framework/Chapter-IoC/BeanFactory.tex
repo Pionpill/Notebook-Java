@@ -80,14 +80,14 @@ BeanFactory只是一个接口，我们最终需要一个该接口的实现来进
     \begin{tikzpicture}[scale = 1]
         \begin{interface}[text width=3cm]{BeanDefinition}{10,0}
         \end{interface}
-        \begin{class}[text width=3cm]{AbstractBeanDefiniyion}{10,-2}
+        \begin{class}[text width=3cm]{AbstractBeanDefinition}{10,-2}
             \implement{BeanDefinition}
         \end{class}
         \begin{class}[text width=3cm]{RootBeanDefinition}{8,-4}
-            \implement{AbstractBeanDefiniyion}
+            \implement{AbstractBeanDefinition}
         \end{class}
         \begin{class}[text width=3cm]{RootBeanDefinition}{12,-4}
-            \implement{AbstractBeanDefiniyion}
+            \implement{AbstractBeanDefinition}
         \end{class}
 
         \begin{interface}[text width=3cm]{BeanFactory}{0,0}
@@ -108,18 +108,64 @@ BeanFactory只是一个接口，我们最终需要一个该接口的实现来进
 
 每一个受管的对象，在容器中都会有一个BeanDefinition的实例（instance）与之相对应，该BeanDefinition的实例负责保存对象的所有必要信息，包括其对应的对象的class类型、是否是抽象类、构造方法参数以及其他属性等。
 
-当客户端向BeanFactory请求相应对象的时候，BeanFactory会通过这些信息为客户端返回一个完备可用的对象实例。RootBeanDefinition和ChildBean- Definition是BeanDefinition的两个主要实现类。
+当客户端向BeanFactory请求相应对象的时候，BeanFactory会通过这些信息为客户端返回一个完备可用的对象实例。RootBeanDefinition和ChildBeanDefinition是BeanDefinition的两个主要实现类。
 
-这其中各个类/接口的作用如下:
+这其中各个接口的作用如下:
 \begin{itemize}
     \item \textbf{BeanFactory}: 定义如何访问容器内管理的 Bean 的方法，如果我们查看原码，会发现大部分方法都是 get,is 方法。
     \item \textbf{BeanDefinitionRegistry}: 定义抽象了 Bean 的注册逻辑，即如何注册进容器。
     \item \textbf{BeanDefinition}: 存储具体 Bean 的信息。
 \end{itemize}
 
+\subsubsection*{BeanFactory}
+
+BeanFactory 是定义了如何管理 Bean，它的部分源码如下:
+
+\begin{Java}
+public interface BeanFactory {
+    Object getBean(String name) throws BeansException;
+    <T> ObjectProvider<T> getBeanProvider(Class<T> requiredType);
+    boolean containsBean(String name);
+    boolean isSingleton(String name) throws NoSuchBeanDefinitionException;
+    boolean isPrototype(String name) throws NoSuchBeanDefinitionException;
+    boolean isTypeMatch(String name, ResolvableType typeToMatch) throws NoSuchBeanDefinitionException;
+    Class<?> getType(String name) throws NoSuchBeanDefinitionException;
+    String[] getAliases(String name);
+\end{Java}
+
+可以看到，BeanFactory 最主要的只有一个 getBean 方法，其他方法都是对 getBean 返回值的进一步操作。也就是说 BeanFactory 实现了 IoC 的核心功能，获取 Bean。
+
+虽然仅有 getBean 一个主要方法，但该方法非常关键，首次调用 getBean 方法会出发 Bean 实例化阶段的活动，这将开启 Bean 的生命周期。
+
+\subsubsection*{BeanDefinition}
+
+BeanDefinition 存储了 Bean 的具体信息，他的绝大多数方法都是 getXXX 与 setXXX 方法，部分源代码如下:
+\begin{Java}
+public interface BeanDefinition extends AttributeAccessor, BeanMetadataElement {
+    void setBeanClassName(@Nullable String beanClassName);
+    String getBeanClassName();
+    void setLazyInit(boolean lazyInit);
+    boolean isLazyInit();
+    ......
+}
+\end{Java}
+
+\subsubsection*{BeanDefinitionRegistry}
+
+BeanDefinitionRegistry 定义了 Bean 的注册逻辑，它的部分源代码如下:
+
+\begin{Java}
+public interface BeanDefinitionRegistry extends AliasRegistry {
+    void registerBeanDefinition(String beanName, BeanDefinition beanDefinition)
+			throws BeanDefinitionStoreException;
+    void removeBeanDefinition(String beanName) throws NoSuchBeanDefinitionException;
+    BeanDefinition getBeanDefinition(String beanName) throws NoSuchBeanDefinitionException;
+}
+\end{Java}
+
 \subsection{Bean 详解}
 
-Spring的IoC容器所起的作用，就像下图所展示的那样，它会以某种方式加载Configuration Metadata（通常也就是XML格式的配置信息），然后根据这些信息绑定整个系统的对象，最终组装成一个可用的基于轻量级容器的应用系统。
+Spring的IoC容器所起的作用，就像下图所展示的那样，它会以某种方式加载Configuration Metadata（通常也就是注解），然后根据这些信息绑定整个系统的对象，最终组装成一个可用的基于轻量级容器的应用系统。
 
 \begin{figure}[H]
     \small
@@ -153,6 +199,32 @@ Spring的IoC容器实现以上功能的过程，基本上可以按照类似的�
 
 总地来说，该阶段所做的工作可以认为是准备性的，重点更加侧重于对象管理信息的收集。当然，一些验证性或者辅助性的工作也可以在这个阶段完成。
 
+\begin{figure}[H]
+    \centering
+    \footnotesize
+    \begin{tikzpicture}[scale = 1, thick]
+        \node [draw, text width=1.4cm] (xml) at (0,1) {xml};
+        \node [draw, text width=1.4cm] (annotation) at (0,0) {annotation};
+        \node [draw, text width=1.4cm] (other) at (0,-1) {other};
+        \node [draw, text width=1.4cm, inner ysep=1.8cm] (reader) at (3,0) {Bean Definition Reader}; 
+        \draw [-Stealth] (xml) -- ++(1.5,0) |- (reader);
+        \draw [-Stealth] (annotation) -- ++(1.5,0) |- (reader);
+        \draw [-Stealth] (other) -- ++(1.5,0) |- (reader);
+        \draw (4.5,2.5) rectangle (13,-2.5);
+        \node (IOC) at (8.75,2) {IOC 容器};
+        \draw (8.3,1.5) rectangle (11.7,-2);
+        \node (map) at (10,1) {beanDefinitionMap};
+        \node [draw, text width=2cm] (registry) at (6.5,0) {BeanDefinition Registry};
+        \draw [-Stealth] (reader) -- (registry);
+        \node [draw] (definition1) at (10,0) {beanDefinition};
+        \node [draw] (definition2) at (10,-0.7) {beanDefinition};
+        \node [draw] (definition3) at (10,-1.4) {beanDefinition};
+        \draw [-Stealth] (registry) -- (definition1);
+    \end{tikzpicture}
+    \caption{容器启动阶段}
+    \label{fig:容器启动阶段}
+\end{figure}
+
 \paragraph*{Bean 实例化阶段}
 
 \begin{enumerate}
@@ -171,11 +243,9 @@ Spring的IoC容器实现以上功能的过程，基本上可以按照类似的�
     \item \textbf{ApplicationContext 实例化所有 bean 定义}: ApplicationContext 在实现的过程中遵循 Spring容器实现流程的两个阶段，只不过它会在启动阶段的活动完成之后，紧接着调用注册到该容器的所有bean定义的实例化方法getBean()。这就是为什么当你得到ApplicationContext类型的容器引用时，容器内所有对象已经被全部实例化完成。
 \end{itemize}
 
-之所以说getBean()方法是有可能触发Bean实例化阶段的活动，是因为只有当对应某个bean定义的getBean()方法第一次被调用时，不管是显式的还是隐式的，Bean实例化阶段的活动才会被触发，第二次被调用则会直接返回容器缓存的第一次实例化完的对象实例（prototype类型bean除外）。当getBean()方法内部发现该bean定义之前还没有被实例化之后，会通过createBean()方法来进行具体的对象实例化，也就开启了 Bean 的生命周期。
+之所以说getBean()方法是有可能触发Bean实例化阶段的活动，是因为只有当对应某个bean定义的getBean()方法第一次被调用时，不管是显式的还是隐式的，Bean实例化阶段的活动才会被触发，第二次被调用则会直接返回容器缓存的第一次实例化完的对象实例（prototype类型bean除外）。当getBean()方法内部发现该bean定义之前还没有被实例化之后，会通过其他方法来进行具体的对象实例化，也就开启了 Bean 的生命周期。
 
-\subsubsection{Bean 作用域}
-
-Bean 的作用域用于确定 Spring 创建 Bean 的实例个数:
+了解 Bean 生命周期之前，需要知道 Bean 的作用域，作用域用于确定 Spring 创建 Bean 的实例个数:
 \begin{itemize}
     \item Singleton: 单例，在 IoC 容器中仅存在一个 Bean 实例，默认值。
     \item Prototype: 每次调取 Bean 时们都返回一个新实例，相当于每次 new 一个新的对象。
@@ -228,9 +298,9 @@ Bean 的作用域用于确定 Spring 创建 Bean 的实例个数:
 
 容器在内部实现的时候，采用“策略模式（Strategy Pattern）”来决定采用何种方式初始化bean实例。通常，可以通过反射或者CGLIB动态字节码生成来初始化相应的bean实例或者动态生成其子类。
 
-默认情况下，容器内部采用的是 CglibSubclassingInstantiationStrategy: 通过CGLIB的动态字节码生成功能，该策略实现类可以动态生成某个类的子类，进而满足了方法注入所需的对象实例化需求。
+默认情况下，容器内部采用的是 CglibSubclassingInstantiationStrategy: 通过CGLIB的动态字节码生成功能，该策略实现类可以动态生成某个类的子类，进而满足了方法注入所需的对象实例化需求。容器只要根据相应bean定义的BeanDefintion取得实例化信息，结合CglibSubclassingIns-tantiationStrategy以及不同的bean定义类型，就可以返回实例化完成的对象实例。
 
-容器只要根据相应bean定义的BeanDefintion取得实例化信息，结合CglibSubclassingIns-tantiationStrategy以及不同的bean定义类型，就可以返回实例化完成的对象实例。但是，返回方式上有些“点缀”。不是直接返回构造完成的对象实例，而是以BeanWrapper对构造完成的对象实例进行包裹，返回相应的BeanWrapper实例。
+返回方式上有些“点缀”。不是直接返回构造完成的对象实例，而是以BeanWrapper对构造完成的对象实例进行包裹，返回相应的BeanWrapper实例。
 
 \noindent\textbf{2. 设置对象属性}
 

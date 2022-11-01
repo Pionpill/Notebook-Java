@@ -83,15 +83,36 @@ public BigInteger divide(BigInteger val)
 
 \subsection{BigDecimal}
 
+\begin{Java}
+public class BigDecimal extends Number implements Comparable<BigDecimal>
+\end{Java}
 
+BigDecimal 有几个关键属性:
 
+\begin{Java}
+private final BigInteger intVal;    // 实际存储的数据
+private final int scale;            // 标度，表示小数位数
+private transient int precision;    // 精度
+\end{Java}
 
+注意这里有个 transient 关键字，表示该属性不会被序列化，大概意思就是，该属性不会进入存储和传输过程(这两个过程需要序列化)。
 
+在构造过程中，会将浮点数膨胀成为整数，并记录标度和精度。标度和精度有什么区别呢？标度是不会改变的，表示实际的小数点位数，辅助 intVal。而精度会在计算过程中改变，例如 1.01 + 1.001 实际上是 101(2) + 1001(3)，这时候就需要改为 1010(3) + 1001(3)，第一个数的精度由此改变了，精度只是一个辅助运算值，对于读取对象记录的大整数具体值没有影响，所以他被 transient 修饰，标度才是真爱。
 
+BigDecimal 精度计算原理比较简单暴力，转换为整数运算再返回。例如 2.00001 会被转换为 BigInteger 的 200001 再计算。由于 BigDecimal 将实际存储值 intVal 与 scale 小数位数分开存储，所以这个过程非常高效，实际上并没有涉及到 BigDecimal 与 BigInteger 的转换。
 
+BigDecimal 提供了两个比较相关函数: equals 和 compareTo:
+\begin{itemize}
+    \item \textbf{equals}: 比较属性，本质上比较 intVal, scale。
+    \item \textbf{compareTo}: 比较值，会比较实际的 BigDecimal 含义值。
+\end{itemize}
 
+什么叫比较实际含义值，例如 1.0 与 1.00 进行比较:
+\begin{itemize}
+    \item equals: 两个值的 intVal 和 scale 分别是 (10,1) 和 (100,2) 不同，直接返回 false;
+    \item compareTo: 比较标度 1,2 发现不同，进行标度对其操作: (10,1) $\rightarrow$ (100,2) 再进行比较，返回 true。
+\end{itemize}
 
-
-
+有一个常见的坑，不要使用 double, float 这样精度不确定的值构造 Decimal，应该优先使用 String，具体原因不解释了。
 
 \newpage

@@ -63,7 +63,7 @@ Spring 本质是始终不变的，都是为了提供各种服务，以帮助我�
 
 整个框架结构最核心的部分为 IoC 容器与 AOP 框架:
 \begin{itemize}
-    \item \textbf{Core 核心}: 是整个框架的基础，Spring 为我们提供了一个 IoC 容器，用于帮助我们以\textbf{依赖注入}的方式管理对象之间的依赖关系。除此之外，Core核心模块中还包括框架内部使用的各种工具类。
+    \item \textbf{Core}: 是整个框架的基础，Spring 为我们提供了一个 IoC 容器，用于帮助我们以\textbf{依赖注入}的方式管理对象之间的依赖关系。除此之外，Core核心模块中还包括框架内部使用的各种工具类。
     \item \textbf{AOP}: 提供了一个轻便但功能强大的AOP框架，让我们可以以AOP的形式增强各POJO（Plain Old Java Object，简单Java对象）的能力。
 \end{itemize}
 
@@ -71,15 +71,7 @@ Spring 本质是始终不变的，都是为了提供各种服务，以帮助我�
 
 \subsection{IoC 理念}
 
-IoC 全称 Inversion of Control，中文通常翻译为“控制反转”。IoC 中有一个重要的机制叫依赖注入 DI(Dependency Injection)。
-
-\fbox{
-    \parbox{0.87\textwidth}{
-        \begin{dispute}
-            原书将 IoC 与DI等同看待，这并不合理，本文抛弃了这种看法。
-        \end{dispute}
-    }
-}
+IoC 全称 Inversion of Control，中文通常翻译为“控制反转”。IoC 中有一个重要的机制叫依赖注入 DI(Dependency Injection)，依赖注入是 IoC 的具体实现方式。
 
 要理解依赖注入，首选需要理解依赖的含义，看下面一段代码:
 
@@ -97,7 +89,7 @@ public class Provider {
 
 如果我们依赖于某个类或服务，最简单而有效的方式就是直接在类的构造函数中 new 相应的依赖类。这个过程是我们自己主动去获取依赖的对象。
 
-可是回头想想，我们自己每次用到什么依赖对象都要主动地去获取，这是否真的必要？我们最终所要做的，其实就是直接调用依赖对象所提供的某项服务而已。只要用到这个依赖对象的时候，它能够准备就绪，我们完全可以不管这个对象是自己找来的还是别人送过来的。如果有人能够在我们需要时将某个依赖对象送过来，为什么还要大费周折地自己去折腾？
+可是回头想想，我们自己每次用到什么依赖对象都要主动地去获取，这是否真的必要？如果有人能够在我们需要时将某个依赖对象送过来，为什么还要大费周折地自己去折腾？
 
 实际上，IoC就是为了帮助我们避免之前的“大费周折”，而提供了更加轻松简洁的方式。它的反转，就反转在让你从原来的事必躬亲，转变为现在的享受服务。简单点儿说，IoC的理念就是，让别人为你服务！
 
@@ -122,21 +114,14 @@ IoC 容器负责创建的对象，初始化等一系列工作，被创建或被�
 
 \subsection{依赖注入的方式}
 
-原书给了一个形象的比喻：当你来到酒吧，想要喝杯啤酒的时候，通常会直接招呼服务生，让他为你送来一杯清凉解渴的啤酒。
-\begin{itemize}
-    \item 如果你是酒吧的常客，或许你刚坐好，服务生已经将你最常喝的啤酒放到了你面前；
-    \item 如果你是初次或偶尔光顾，也许你坐下之后还要招呼服务生；
-    \item 还有一种可能，你根本就不知道哪个牌子是哪个牌子，这时，你只能打手势或干脆画出商标图来告诉服务生你到底想要什么了吧！
-\end{itemize}
-
-这很形象地介绍了三种依赖注入的方式:
+一般的，依赖注入有三种方式:
 \begin{itemize}
     \item 构造方法注入: constructor injection
     \item setter 方法注入: setter injection
     \item 接口注入: interface injection
 \end{itemize}
 
-\subsubsection{构造方法注入}
+\subsubsection*{构造方法注入}
 
 顾名思义，通过构造方法中声明依赖对象的参数列表，让外部 (通常是 IoC 容器) 知道它需要哪些依赖对象。
 
@@ -149,9 +134,9 @@ public FXNewsProvider(IFXNewsListener newsListner,IFXNewsPersister newsPersister
 
 IoC Service Provider会检查被注入对象的构造方法，取得它所需要的依赖对象列表，进而为其注入相应的对象。同一个对象是不可能被构造两次的，因此，被注入对象的构造乃至其整个生命周期，应该是由IoC Service Provider来管理的。
 
-构造方法注入方式比较直观，对象被构造完成后，即进入就绪状态，可以马上使用。这就好比你刚进酒吧的门，服务生已经将你喜欢的啤酒摆上了桌面一样。坐下就可马上享受一份清凉与惬意。
+构造方法注入方式比较直观，对象被构造完成后，即进入就绪状态，可以马上使用。
 
-\subsubsection{setter 方法注入}
+\subsubsection*{setter 方法注入}
 
 对于JavaBean对象来说，通常会通过setXXX()和getXXX()方法来访问对应属性。这些setXXX()方法统称为setter方法，getXXX()当然就称为getter方法。通过setter方法，可以更改相应的对象属性，通过getter方法，可以获得相应属性的状态。所以，当前对象只要为其依赖对象所对应的属性添加setter方法，就可以通过setter方法将相应的依赖对象设置到被注入对象中。
 
@@ -176,15 +161,15 @@ public class FXNewsProvider {
 
 这样，外界就可以通过调用setNewsListener和setNewPersistener方法为FXNewsProvider对象注入所依赖的对象了。
 
-setter方法注入虽不像构造方法注入那样，让对象构造完成后即可使用，但相对来说更宽松一些，可以在对象构造完成后再注入。这就好比你可以到酒吧坐下后再决定要点什么啤酒，可以要百威，也可以要大雪，随意性比较强。如果你不急着喝，这种方式当然是最适合你的。
+setter方法注入虽不像构造方法注入那样，让对象构造完成后即可使用，但相对来说更宽松一些，可以在对象构造完成后再注入。
 
-\subsubsection{接口注入}
+\subsubsection*{接口注入}
 
 相对于前两种注入方式来说，接口注入没有那么简单明了。被注入对象如果想要IoC  Service  Provider为其注入依赖对象，就必须实现某个接口。这个接口提供一个方法，用来为其注入依赖对象。IoC Service Provider最终通过这些接口来了解应该为被注入对象注入什么依赖对象。
 
-接口注入的方式比较死板，这里不做过多说明。
+接口注入的方式比较死板，应用比较少，这里不做过多说明。
 
-\subsubsection{三种注入方式的比较}
+\subsubsection*{三种注入方式的比较}
 
 \begin{itemize}
     \item \textbf{接口注入}: 接口注入是现在不甚提倡的一种方式，基本处于“退役状态”。因为它强制被注入对象实现不必要的接口，带有侵入性。
