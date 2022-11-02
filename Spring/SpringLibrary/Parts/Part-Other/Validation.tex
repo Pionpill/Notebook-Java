@@ -1,6 +1,16 @@
 \section{Validation 注解}
 
-\subsection{Validation 注解}
+导入依赖如下:
+\begin{xml}
+<dependency>
+    <groupId>org.springframework.boot</groupId>
+    <artifactId>spring-boot-starter-validation</artifactId>
+</dependency>
+\end{xml}
+
+可以发现 validation 以及被集成到 spring 中了，为什么要这样做呢？简言之，validation 的一部分注解会在 mvc 的参数解析器中进行解析。
+
+\subsection{约束性注解}
 
 \subsubsection{@NotNull,@NotEmpty,@NotBlank}
 
@@ -31,6 +41,8 @@ public @interface NotNull {
 }
 \end{Java}
 
+@NotNull 对应的还有一个 @Null 注解。
+
 \subsubsection{@Size,@Length,@Max,@Min}
 
 这三个注解均用于判断数值大小/字符串长度:
@@ -52,13 +64,7 @@ public @interface Size {
     String message() default "{javax.validation.constraints.Size.message}";
     Class<?>[] groups() default { };
     Class<? extends Payload>[] payload() default { };
-    /**
-     * @return size the element must be higher or equal to
-     */
     int min() default 0;
-    /**
-     * @return size the element must be lower or equal to
-     */
     int max() default Integer.MAX_VALUE;
     @Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
     @Retention(RUNTIME)
@@ -69,7 +75,7 @@ public @interface Size {
 }
 \end{Java}
 
-\subsubsection{@Digits}
+\subsubsection{@Digits,@DecimalMax,@DecimalMin}
 
 被注解的元素必须为一个数字，其值必须在可接受的范围内。主要参数有两个:
 \begin{itemize}
@@ -82,7 +88,71 @@ public @interface Size {
 private String ccCVV;
 \end{Java}
 
-\subsubsection{@Valid}
+\begin{Java}
+@Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
+@Retention(RUNTIME)
+@Repeatable(List.class)
+@Documented
+@Constraint(validatedBy = { })
+public @interface Digits {
+    ...
+}
+\end{Java}
+
+@DecimalMax 与 @DecimalMin 分别表示数字的最大值与最小值。
+
+\subsubsection{@AssertFalse,@AssertTrue}
+
+被注解的对象必须是 True 或 False，否则抛错。
+
+\begin{Java}
+@Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
+@Retention(RUNTIME)
+@Repeatable(List.class)
+@Documented
+@Constraint(validatedBy = { })
+public @interface AssertTrue {
+    ...
+}
+\end{Java}
+
+\subsubsection{@Future,@Past}
+
+用于限定日期必须在当前日期的未来或者过期，注意源码中并没有 value，也就是说这里的日期是指程序运行时的日期。
+
+\begin{Java}
+@Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
+@Retention(RUNTIME)
+@Repeatable(List.class)
+@Documented
+@Constraint(validatedBy = { })
+public @interface Future {
+    ...
+}
+\end{Java}
+
+\subsubsection{@Pattern}
+
+限定字符串必须满足正则表达式:
+
+\begin{Java}
+@Target({ METHOD, FIELD, ANNOTATION_TYPE, CONSTRUCTOR, PARAMETER, TYPE_USE })
+@Retention(RUNTIME)
+@Repeatable(List.class)
+@Documented
+@Constraint(validatedBy = { })
+public @interface Pattern {
+    ...
+}
+\end{Java}
+
+\subsubsection{@Email,@URL}
+
+用于限定被修饰的属性必须是邮箱或者URL。
+
+\subsection{验证性注解}
+
+\subsubsection{@Valid,@Validated}
 
 @Valid注解用于校验。\footnote{参考: \url{https://blog.csdn.net/gaojp008/article/details/80583301}}
 
@@ -104,6 +174,27 @@ public Girl addGirl(@Valid Girl girl, BindingResult bindingResult) {
         return null;  
     }  
     return girlResposity.save(girl);  
+}
+\end{Java}
+
+@Validated 是 @Valid 的一次封装，是Spring提供的校验机制使用。@Valid不提供分组功能。当一个实体类需要多种验证方式时，例：对于一个实体类的id来说，新增的时候是不需要的，对于更新时是必须的。可以通过groups对验证进行分组。
+
+不分配 groups 时，默认每次都进行验证，对参数需要多种验证方式时，也可通过分配不同的组达到目的:
+
+\begin{Java}
+@NotEmpty(groups={First.class})  
+@Size(min=3,max=8,groups={Second.class})  
+private String name;  
+\end{Java}
+
+注意 Validated 是在 springframework 包下，不是 javax 包下:
+
+\begin{Java}
+@Target({ElementType.TYPE, ElementType.METHOD, ElementType.PARAMETER})
+@Retention(RetentionPolicy.RUNTIME)
+@Documented
+public @interface Validated {
+    Class<?>[] value() default {};
 }
 \end{Java}
 
