@@ -37,9 +37,14 @@
 
 笔者为软件工程系在校本科生，有计算机学科理论基础(操作系统，数据结构，计算机网络，编译原理等)，本人在撰写此笔记时已有 Java 开发经验，基础知识不再赘述。
 
+本文各部分内容如下:
+\begin{itemize}
+    \item Java Basic Library: 简单标准库，包含基本的 Java 操作源码分析，部分内容如多线程，并发放在其他部分。
+\end{itemize}
+
 本人的编写及开发环境如下：
 \begin{itemize}
-    \item Java: Java11
+    \item Java: Java17
     \item OS: Windows11
 \end{itemize}
 
@@ -53,18 +58,27 @@
 \setcounter{page}{1} 
 \pagestyle{fancy}
 
-\part{Java Simple STL}
-\chapter{lang 包}
-\import{Parts/SimpleSTL/lang}{Object.tex}
-\import{Parts/SimpleSTL/lang}{Wrapper.tex}
-\import{Parts/SimpleSTL/lang}{String.tex}
-\import{Parts/SimpleSTL/lang}{Annotation.tex}
-\import{Parts/SimpleSTL/lang}{Exception.tex}
-\import{Parts/SimpleSTL/lang}{Reflect.tex}
-\import{Parts/SimpleSTL/lang}{Interface.tex}
-\chapter{math 包}
-\import{Parts/SimpleSTL/math}{BigInteger.tex}
+\part{Java 基础库}
+\chapter{基本数据类型相关}
+\import{Parts/Part-Basic/BasicType}{Object.tex}
+\import{Parts/Part-Basic/BasicType}{Wrapper.tex}
+\import{Parts/Part-Basic/BasicType}{String.tex}
+\import{Parts/Part-Basic/BasicType}{BigInteger.tex}
+\chapter{注解与反射}
+\import{Parts/Part-Basic/Reflect}{Annotation.tex}
+\import{Parts/Part-Basic/Reflect}{Reflect.tex}
+\chapter{其他重要库}
+\import{Parts/Part-Basic/Other}{Interface.tex}
+\import{Parts/Part-Basic/Other}{Exception.tex}
 
-% \chapter{util 包}
-% \import{Parts/SimpleSTL/util}{Arrays.tex}
+\part{Java 容器}
+\chapter{容器工具}
+\import{Parts/Part-Collection/Common}{Tools.tex}
+\chapter{列表，集合与队列}
+\import{Parts/Part-Collection/Collection}{Interface.tex}
+\import{Parts/Part-Collection/Collection}{List.tex}
+\import{Parts/Part-Collection/Collection}{Map.tex}
+\import{Parts/Part-Collection/Collection}{Set.tex}
+
+
 \end{document}

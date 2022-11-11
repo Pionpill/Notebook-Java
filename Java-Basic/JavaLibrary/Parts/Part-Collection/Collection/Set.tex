@@ -1,0 +1,26 @@
+\section{Set 集合}
+
+\begin{Java}
+public interface Set<E> extends Collection<E>
+\end{Java}
+
+Set 接口继承自 Collection 接口，新增的方法和 List 类似。
+
+Set 的默认实现类 AbstractSet 实现了三个方法:
+
+\begin{Java}
+// 判断相等，需要调用 containsAll 方法
+public boolean equals(Object o)
+// 获取哈希码
+public int hashCode()
+// 移除所有元素，需要调用 remove 方法
+public boolean removeAll(Collection<?> c)
+\end{Java}
+
+Set 的主要子类继承关系如下:
+
+\begin{center}
+    \includegraphics[width=0.5\linewidth]{../../../imgs/Set.jpg}
+\end{center}
+
+\subsection{HashSet}
