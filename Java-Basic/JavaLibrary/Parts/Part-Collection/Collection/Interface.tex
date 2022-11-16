@@ -105,13 +105,53 @@ public interface Map<K, V>
     \item Set<Map.Entry<K, V> entrySet(): 获取键值对集合。
     \item static <K, V> Map<K, V> of(K k1, V v1): 返回不可修改的 Map 对象。
     \item static <K, V> Map<K, V> copyOf(Map<? extends K, ? extends V> map): 赋值对象。
+    \item default void forEach(BiConsumer<? super K, ? super V> action): 遍历执行
 \end{itemize}
 
 此外，Map 有一个内部类接口 Entry<K,V> 用于存储单个键值对。
 
 \subsubsection{AbstractMap 默认实现}
 
+AbstractSet 的 entrySet 方法未实现，其他大部分需要便利的方法都依赖于该方法。
 
+\begin{Java}
+public abstract Set<Entry<K,V>> entrySet();
+\end{Java}
 
+entrySet 的返回值必须是一个可迭代的 Set 对象。
+
+\subsection*{章节概述}
+
+这章会讲的几个容器如下(不涉及多线程容器):
+
+\begin{table}[H]
+    \centering
+    \small
+    \caption{容器概述}
+    \label{table:容器概述}
+    \setlength{\tabcolsep}{4mm}
+    \begin{tabular}{c|c|c|c|cccc}
+        \toprule
+        \textbf{类型} & \textbf{类名} & \textbf{使用频率} & \textbf{多线程} & \textbf{备注} \\
+        \midrule
+        \multirow{4}{*}{\textbf{List}} & ArrayList & $\bigstar\bigstar\bigstar$ & 不安全 & List 基本只用 ArrayList \\
+        & LinkedList & $\bigstar$ & 不安全 & 性能不及 ArrayList \\
+        & Vector & $\bigstar$ & 安全 & ArrayList 的古早实现 \\
+        & Stack & $\bigstar$ & 安全 & 栈 \\
+        \midrule
+        \multirow{4}{*}{\textbf{Map}} & Hashtable & $\bigstar$ & 安全 & HashMap 的古早实现 \\
+        & HashMap & $\bigstar\bigstar\bigstar$ & 不安全 & Map 默认使用 HashMap \\
+        & TreeMap & $\bigstar\bigstar$ & 不安全 & 有序的 Map \\
+        & LinkedHashMap & $\bigstar$ & 不安全 & 有序的 Map, 按插入顺序排序 \\
+        \midrule
+        \multirow{3}{*}{\textbf{Set}} & HashSet & $\bigstar\bigstar\bigstar$ & 不安全 & 对应 HashMap \\
+        & TreeSet & $\bigstar\bigstar$ & 不安全 & 对应 TreeMap \\
+        & LinkedHashSet & $\bigstar$ & 不安全 & 对应 LinkedHashMap \\
+        \midrule
+        \multirow{2}{*}{\textbf{Queue}} & PriorityQueue & $\bigstar\bigstar$ & 不安全 & 优先队列，需要顺序取值就用 \\
+        & ArrayDeque & $\bigstar\bigstar\bigstar$ & 不安全 & Queue 和栈的默认选择 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
 
 \newpage

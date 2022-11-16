@@ -105,6 +105,8 @@ public Object clone() {
 }
 \end{Java}
 
+transient 还有很多类似的用法，其本质都是通过优化序列化过程减轻数据传输与存储压力，下文不再赘述。
+
 \subsubsection{扩容机制}
 
 \fbox{
@@ -162,6 +164,21 @@ private Object[] grow(int minCapacity) {
     \item 对于空列表，ArrayList 有一个 static final 的空数组，每次都会调用它，是个小优化。
     \item 对于 1.5 倍扩容，采用的是去尾法，15 $\rightarrow$ 22，但是 1 会扩为 2。
 \end{itemize}
+
+此外，ArrayList 还提供了一个缩容方法:
+
+\begin{Java}
+public void trimToSize() {
+    modCount++;
+    if (size < elementData.length) {
+        elementData = (size == 0)
+          ? EMPTY_ELEMENTDATA
+          : Arrays.copyOf(elementData, size);
+    }
+}
+\end{Java}
+
+可以手动调用该方法对容器进行缩容。
 
 \subsection{LinkedList}
 
