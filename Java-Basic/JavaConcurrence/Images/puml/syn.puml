@@ -1,0 +1,16 @@
+@startuml
+start
+:尝试获取 queue;
+if (queue 被占用) then (yes)
+    :进入阻塞状态;
+else(no)
+    :占用 queue 锁;
+endif
+if (queue 满足条件) then (yes)
+    :进行 queue 操作;
+else(no)
+    :while 循环调用 wait();
+    :线程等待, 释放锁;
+endif
+end
+@enduml
