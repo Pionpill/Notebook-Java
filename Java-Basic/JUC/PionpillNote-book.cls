@@ -57,7 +57,7 @@
 \fancyhf{}
 \renewcommand\headrulewidth{0pt}
 \fancyfoot[L]{\small{\today}}
-\fancyfoot[C]{\small{Java Library}}
+\fancyfoot[C]{\small{Java Concurrence}}
 \fancyfoot[R]{\small{ \thepage{} / \pageref{LastPage}}}
 % titletoc-目录样式
 \titlecontents{section}[0pt]{\addvspace{2pt}\filright}%
