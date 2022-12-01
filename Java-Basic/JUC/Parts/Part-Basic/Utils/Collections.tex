@@ -1,5 +1,9 @@
 \section{并发集合}
-\subsection{List: CopyOnWriteArrayList}
+\subsection{List}
+
+JUC 只提供了一个并发列表，采用了写时复制策略。
+
+\subsubsection{CopyOnWriteArrayList}
 
 并发列表只有一个 CopyOnWriteList，顾名思义，它是一个线程安全的 ArrayList，对其进行的操作都是在底层的一个复制的数组(快照)上进行的，使用了写时复制策略。
 
@@ -117,3 +121,418 @@ static final class COWIterator<E> implements ListIterator<E> {
     }
 }
 
+\subsection{Queue}
+
+JUC 提供了很多队列，多到数量是其他容器数量之和。大致可分为两种:
+\begin{itemize}
+    \item \textbf{ConcurrentLinkedQueue}: 纯 CAS 实现的非阻塞高并发队列。
+    \item \textbf{BlockingQueue}: 实现了 BlockingQueue 接口的阻塞队列，使用锁机制实现，并发性相对低。
+\end{itemize}
+
+\subsubsection{ConcurrentLinkedQueue}
+
+顾名思义，ConcurrentLinkedQueue 是使用"单向"链表实现的线程安全队列，出队和入队操作使用 CAS 实现线程安全。
+
+\begin{Java}
+public class ConcurrentLinkedQueue<E> extends AbstractQueue<E> implements Queue<E>, java.io.Serializable
+\end{Java}
+
+ConcurrentLinkedQueue内部的队列使用单向链表方式实现，其中有两个volatile类型的Node节点分别用来存放队列的首、尾节点。
+
+\begin{Java}
+transient volatile Node<E> head;
+private transient volatile Node<E> tail;
+\end{Java}
+
+默认情况下，head 和 tail 时指向空节点即哨兵节点:
+
+\begin{Java}
+public ConcurrentLinkedQueue() {
+    head = tail = new Node<E>();
+}
+\end{Java}
+
+Node 节点很简单，只有两个元素用于存储值和下一个 Node 的指针:
+
+\begin{Java}
+volatile E item;
+volatile Node<E> next;
+\end{Java}
+
+ConcurrentLinkedQueue 有一个特殊之处，tail 节点并不一定是尾节点，也有可能是尾节点的前一个节点。为什么要这样做呢？
+
+\begin{itemize}
+    \item 假设我们不这样做，让 tail 节点始终是尾部节点，那么我们每次添加元素都需要对 tail 进行 CAS 操作(注意只是 tail 节点)。这样的好处是代码简单，缺陷是频繁的 CAS 操作效率低。
+    \item 如果我们每两个或者多个节点对 tail 节点进行 CAS 操作，就可以减少 CAS 更新 tail 节点的次数，提高入队的效率。
+\end{itemize}
+
+在 Java1.7 中，可以使用 hops 变量控制 tail 节点每添加多少新节点才更新，这是一种优化策略。hops 值小则需要频繁的对 tail 进行 CAS 操作，过大则需要通过链表遍历查找尾节点，violate 修饰的 tail 节点对读有更好的优化。因此在 Java8 之后，默认添加两个节点才更新 tail 节点。
+
+当然，这样做提高性能的同时也是有代价的: 极大地增加了代码复杂度，不借助资料看懂基本看不懂，借助资料看源码也很迷。
+
+此外，由于采用 CAS 操作没有加锁，在计算队列长度时有可能出错，因为计算过程中，有可能增加或者删除元素节点。
+
+到此，从应用层面我们只需要记住以下几点:
+\begin{itemize}
+    \item ConcurrentLinkedQueue 使用单向链表存储数据。
+    \item ConcurrentLinkedQueue 采用 CAS 保证原子性，因此可能会导致 size 计算失误。
+    \item ConcurrentLinkedQueue 对 tail 节点进行了优化，每添加两次元素，tail 节点移动一次，减少 CAS 操作。
+\end{itemize}
+
+\paragraph*{源码解析}
+
+ConcurrentLinkedQueue 的源码理解起来庞复杂，可以跳过。(这里有空再补)
+
+\subsubsection{LinkedBlockingQueue}
+
+从名字上可以知道，LinkedBlockingQueue 是链表实现的阻塞队列。既然是阻塞，那肯定是通过上锁保证原子性。
+
+\begin{Java}
+public class LinkedBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E>, java.io.Serializable
+\end{Java}
+
+BlockingQueue 定义了基础的 queue 方法，功能上它有点像标记接口，定义了一套阻塞方法。
+
+LinkedBlockingQueue 有以下几个关键属性:
+
+\begin{Java}
+private final AtomicInteger count = new AtomicInteger();
+transient Node<E> head;
+private transient Node<E> last;
+private final ReentrantLock takeLock = new ReentrantLock();
+private final Condition notEmpty = takeLock.newCondition();
+private final ReentrantLock putLock = new ReentrantLock();
+private final Condition notFull = takeLock.newCondition();
+
+public LinkedBlockingQueue(int capacity) {
+    if (capacity <= 0) throw new IllegalArgumentException();
+    this.capacity = capacity;
+    last = head = new Node<E>(null);
+}
+\end{Java}
+
+和 ConcurrentLinkedQueue 一样保存了头节点和尾节点，同时维持一个 count 属性用于计算节点数量。此外为了线程安全创造了两个 ReentrantLock 实例，分别用来控制元素入队和出队的原子性：
+\begin{itemize}
+    \item \textbf{takeLock}: 控制同时只有一个线程可以从队列头获取元素，其他线程必须等待。
+    \item \textbf{putLock}: 控制同时只能有一个线程可以获取锁，在队列尾部添加元素，其他线程必须等待。
+\end{itemize}
+
+notEmpty和notFull是条件变量，它们内部都有一个条件队列用来存放进队和出队时被阻塞的线程。
+
+由于条件变量notEmpty内部的条件队列的维护使用的是takeLock的锁状态管理机制，所以在调用notEmpty的await和signal方法前调用线程必须先获取到takeLock锁，否则会抛出IllegalMonitorStateException异常。notEmpty内部则维护着一个条件队列，当线程获取到takeLock锁后调用notEmpty的await方法时，调用线程会被阻塞，然后该线程会被放到notEmpty内部的条件队列进行等待，直到有线程调用了notEmpty的signal方法。noFull 类似。
+
+LinkedBlockingQueue 的原理非常简单，就是采用 ReentrantLock，这里只贴出 offer() 的部分代码:
+
+\begin{Java}
+public boolean offer(E e) {
+    // 省略一些检查，初始化操作
+    putLock.lock();
+    try {
+        if (count.get() == capacity)
+            return false;
+        enqueue(node);
+        c = count.getAndIncrement();
+        if (c + 1 < capacity)
+            notFull.signal();
+    } finally {
+        putLock.unlock();
+    }
+    // ...
+    return true;
+}
+\end{Java}
+
+\begin{figure}[H]
+    \centering
+    \small
+    \begin{tikzpicture}[scale = 1]
+        \node[color = white, fill = green!60!black] (head) at (0,0) {head};
+        \node[color = white, fill = brown!80] (takeLock) at (0,-1.5) {takeLock};
+        \draw [-Stealth] (head) -- (takeLock);
+        \node[color = white, fill = green!60!black] (node1) at (2,0) {node1};
+        \node[color = white, fill = green!60!black] (node2) at (4,0) {node2};
+        \node[color = white, fill = green!60!black] (tail) at (6,0) {tail};
+        \node[color = white, fill = brown!80] (putLock) at (6,-1.5) {putLock};
+        \draw [-Stealth] (tail) -- (putLock);
+        \draw [-Stealth] (head) -- (node1);
+        \draw [-Stealth](node1) -- (node2);
+        \draw [dashed] (node2) -- (tail);
+        \node (peek) at (-1.5,1) {peek()};
+        \node (take) at (-2,0) {take()};
+        \node (poll) at (-1.5,-1) {poll()};
+        \foreach \node in {peek, take, poll} {
+            \draw [-Stealth] (\node) -- (head);
+        }
+        \node (offer) at (7.5,1) {offer()};
+        \node (put) at (7.5,-1) {put()};
+        \foreach \node in {offer, put} {
+            \draw [-Stealth] (\node) -- (tail);
+        }
+        \begin{scope}[font=\scriptsize]
+            \node[color = white, fill = brown!60] (takeLock AQS) at (-1,-3) {AQS 阻塞队列};
+            \node[color = white, fill = brown!60, text width=4em] (notEmpty 条件队列) at (1,-3) {notEmpty 条件队列};
+            \node[color = white, fill = brown!60] (putLock AQS) at (5,-3) {AQS 阻塞队列};
+            \node[color = white, fill = brown!60, text width=4em] (notFull 条件队列) at (7,-3) {notFull 条件队列};
+        \end{scope}
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (takeLock) -- (takeLock AQS);
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (takeLock) -- (notEmpty 条件队列);
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (putLock) -- (putLock AQS);
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (putLock) -- (notFull 条件队列);
+    \end{tikzpicture}
+    \caption{BlockingLinkedQueue}
+    \label{fig:BlockingLinkedQueue}
+\end{figure}
+
+\subsubsection{ArrayBlockingQueue}
+
+ArrayBlockingQueue 和 LinkedBlockingQueue 类似，只不过底层采用数组存储元素，这节只讲不同之处。
+
+\begin{Java}
+public class ArrayBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E>, java.io.Serializable {
+    final Object[] items;
+    int takeIndex;
+    int putIndex;
+    int count;
+    final ReentrantLock lock;
+    @SuppressWarnings("serial")
+    private final Condition notEmpty;
+    @SuppressWarnings("serial")
+    private final Condition notFull;
+}
+\end{Java}
+
+由于采用数组存储元素，ArrayBlockingQueue 是有界的，因此需要在构造函数传入队列大小参数:
+
+\begin{Java}
+public ArrayBlockingQueue(int capacity, boolean fair) {
+    if (capacity <= 0)
+        throw new IllegalArgumentException();
+    this.items = new Object[capacity];  // items 是存储元素的数组
+    lock = new ReentrantLock(fair);     // 默认情况下，采用非公平策略
+    notEmpty = lock.newCondition();
+    notFull =  lock.newCondition();
+}
+\end{Java}
+
+和写时复制以及扩容机制不同，ArrayBlockingQueue 数组的大小是不会变的，如果超出数组大小会出现错误:
+
+\begin{Java}
+public boolean offer(E e) {
+    Objects.requireNonNull(e);
+    final ReentrantLock lock = this.lock;
+    lock.lock();
+    try {
+        if (count == items.length)
+            return false;
+        else {
+            enqueue(e);
+            return true;
+        }
+    } finally {
+        lock.unlock();
+    }
+}
+\end{Java}
+
+保证线程安全的策略和 LinkedBlockingQueue 类似，采用锁策略，不过 ArrayBlockingQueue 只有一个锁:
+
+\begin{Java}
+final ReentrantLock lock;
+\end{Java}
+
+所以操作，包括读写，转换都会用到 lock 锁，因此效率是比较低的，由于采用了锁机制，tail，head 都没有被 violate 修饰，因为锁可以保证内存可见性。
+
+总而言之，在保证线程安全方面，ArrayBlockingQueue 采用了简单的直接对所有方法加锁(ReentrantReadWriteLock)的方式。不同于 LinkedBlockingQueue 对头部和尾部采用了不同的锁，ArrayBlockingQueue 只采用了一个锁(两个条件变量)，效率明显不及 LinkedBlockingQueue。但由于 ArrayBlockingQueue 采用定长数组存储数据，可以实现随机查找，这方面的优势较大。
+
+\begin{figure}[H]
+    \centering
+    \small
+    \begin{tikzpicture}[scale = 1]
+        \node[color = white, fill = green!60!black] (item1) at (0,0) {item1};
+        \node[color = white, fill = green!60!black] (item2) at (1.2,0) {item2};
+        \node[color = white, fill = green!60!black] (item3) at (2.4,0) {item3};
+        \node[color = white, fill = green!60!black] (item4) at (3.6,0) {item4};
+        \node[color = white, fill = green!60!black] (itemN) at (6,0) {itemN};
+        \draw [dashed] (item4) -- (itemN);
+        \node (peek) at (-1.5,1) {peek()};
+        \node (take) at (-2,0) {take()};
+        \node (poll) at (-1.5,-1) {poll()};
+        \foreach \node in {peek, take, poll} {
+            \draw [-Stealth] (\node) -- (item1);
+        }
+        \node (offer) at (7.5,1) {offer()};
+        \node (put) at (7.5,-1) {put()};
+        \foreach \node in {offer, put} {
+            \draw [-Stealth] (\node) -- (itemN);
+        }
+        \draw[decorate,decoration={brace,mirror,raise=10pt,amplitude=2mm}] (0,0) -- (6,0);
+        \node[color = white, fill = brown!80] (lock) at (3,-1) {lock};
+        \node[color = white, fill = brown!60, text width=3em, align=center, font = \scriptsize] (AQS) at (1,-2.5) {AQS 阻塞队列};
+        \node[color = white, fill = brown!60, text width=3em, align=center, font = \scriptsize] (notEmpty) at (3,-2.5) {notEmpty 条件队列};
+        \node[color = white, fill = brown!60, text width=3em, align=center, font = \scriptsize] (notFull) at (5,-2.5) {notFull 条件队列};\
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (lock) -- (notFull);
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (lock) -- (notEmpty);
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (lock) -- (AQS);
+    \end{tikzpicture}
+    \caption{BlockingArrayQueue}
+    \label{fig:BlockingArrayQueue}
+\end{figure}
+
+
+\subsubsection{PriorityBlockingQueue}
+
+PriorityBlockingQueue 是带优先级的无界阻塞队列，其内部使用平衡二叉树实现，直接遍历元素不保证有序。默认使用对象的 compareTo 方法提供比较规则。扩容机制参考 ArrayList，优先机制参考 TreeMap，阻塞机制参考 ArrayBlockingQueue。这节只讲多线程下的不同点。
+
+\begin{Java}
+public class PriorityBlockingQueue<E> extends AbstractQueue<E> implements BlockingQueue<E>, java.io.Serializable {
+    private transient Object[] queue;
+    private transient int size;
+    private transient Comparator<? super E> comparator;
+    private final ReentrantLock lock = new ReentrantLock();
+    @SuppressWarnings("serial")
+    private final Condition notEmpty = lock.newCondition();
+    private transient volatile int allocationSpinLock;
+}
+\end{Java}
+
+可以发现，PriorityBlockingQueue 种有一个 queue 数组用于存放元素，由于是无界队列，queue 是可以自动扩容的。allocationSpinLock 是一个自旋锁，通过 CAS 操作保证同时只有一个线程可以扩容队列，状态为 0 或 1，0 表示没有进行扩容，1表示正在进行扩容。
+
+\begin{Java}
+public PriorityBlockingQueue(int initialCapacity, Comparator<? super E> comparator) {
+    if (initialCapacity < 1)
+        throw new IllegalArgumentException();
+    this.comparator = comparator;
+    this.queue = new Object[Math.max(1, initialCapacity)];  // 默认初始大小为 11
+}
+\end{Java}
+
+在扩容过程中，PriorityBlockingQueue 会检查数组大小，如果小于 64，容量+2, 大于 64 容量翻倍，扩容代码如下:
+
+\begin{Java}
+private void tryGrow(Object[] array, int oldCap) {
+    lock.unlock(); // must release and then re-acquire main lock
+    Object[] newArray = null;
+    if (allocationSpinLock == 0 && ALLOCATIONSPINLOCK.compareAndSet(this, 0, 1)) {
+        try {
+            int growth = (oldCap < 64) ? (oldCap + 2) : (oldCap >> 1);
+            int newCap = ArraysSupport.newLength(oldCap, 1, growth);
+            if (queue == array)
+                newArray = new Object[newCap];
+        } finally {
+            allocationSpinLock = 0;
+        }
+    }
+    if (newArray == null) // back off if another thread is allocating
+        Thread.yield();
+    lock.lock();
+    if (newArray != null && queue == array) {
+        queue = newArray;
+        System.arraycopy(array, 0, newArray, 0, oldCap);
+    }
+}
+\end{Java}
+
+我们发现在进入扩容是首先会释放锁，然后使用 CAS 控制只有一个扩容可以成功。为什么要释放锁呢? 这是一个优化方案，不释放锁对功能没有影响，但是扩容是一个耗时的过程，如果不释放锁，在扩容期间就不能进行出队和入队操作，这会大大降低并发性。
+
+
+此外，虽然 PriorityBlockingQueue 和 ArrayList 一样没有动态缩容机制，但是 ArrayList 提供了公有的 trimToSize() 方法 用于手动缩容，而 PriorityBlockingQueue 没有提供任何缩容方法。
+
+具体的二叉树算法这里不介绍。
+
+\begin{figure}[H]
+    \centering
+    \small
+    \begin{tikzpicture}[scale = 1]
+        \node[color = white, fill = green!60!black] (item1) at (0,0) {item1};
+        \node[color = white, fill = green!60!black] (item2) at (1.2,0) {item2};
+        \node[color = white, fill = green!60!black] (item3) at (2.4,0) {item3};
+        \node[color = white, fill = green!60!black] (item4) at (3.6,0) {item4};
+        \node[color = white, fill = green!60!black] (itemN) at (6,0) {itemN};
+        \draw [dashed] (item4) -- (itemN);
+        \node (peek) at (-1.5,1) {peek()};
+        \node (take) at (-2,0) {take()};
+        \node (poll) at (-1.5,-1) {poll()};
+        \foreach \node in {peek, take, poll} {
+            \draw [-Stealth] (\node) -- (item1);
+        }
+        \node (offer) at (7.5,1) {offer()};
+        \node (put) at (7.5,-1) {put()};
+        \foreach \node in {offer, put} {
+            \draw [-Stealth] (\node) -- (itemN);
+        }
+        \draw[decorate,decoration={brace,mirror,raise=10pt,amplitude=2mm}] (0,0) -- (6,0);
+        \node[color = white, fill = brown!80] (lock) at (3,-1) {lock};
+        \node[color = white, fill = brown!60, text width=3em, align=center, font = \scriptsize] (AQS) at (2,-2.5) {AQS 阻塞队列};
+        \node[color = white, fill = brown!60, text width=3em, align=center, font = \scriptsize] (notEmpty) at (4,-2.5) {notEmpty 条件队列};
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (lock) -- (notEmpty);
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (lock) -- (AQS);
+    \end{tikzpicture}
+    \caption{PriorityBlockingQueue}
+    \label{fig:PriorityBlockingQueue}
+\end{figure}
+
+\subsubsection{DelayQueue}
+
+DelayQueue并发队列是一个无界阻塞延迟队列，队列中的每个元素都有个过期时间，当从队列获取元素时，只有过期元素才会出队列。队列头元素是最快要过期的元素。
+
+\begin{Java}
+public class DelayQueue<E extends Delayed> extends AbstractQueue<E> implements BlockingQueue<E> {
+    private final transient ReentrantLock lock = new ReentrantLock();
+    private final PriorityQueue<E> q = new PriorityQueue<E>();
+    private Thread leader;
+    private final Condition available = lock.newCondition();
+    public DelayQueue() {}
+}
+\end{Java}
+
+DelayQueue 内部使用 PriorityQueue 存放数据，使用 ReentrantLock 实现线程同步。加入 DelayQueue 的元素都需要实现 Delayed 接口，由于每个元素都有一个过期时间，所以要实现获知当前元素还剩下多少时间就过期了的接口，由于内部使用优先级队列来实现，所以要实现元素之间相互比较的接口。:
+
+\begin{Java}
+public interface Delayed extends Comparable<Delayed> {
+    long getDelay(TimeUnit unit);
+}
+\end{Java}
+
+具体方法上，没什么好说的，就是用 ReentrantLock 加锁然后调用 PriorityQueue 的方法。poll 和 take 方法比较特殊，会查看队列元素是否过期，过期了才取。
+
+\begin{figure}[H]
+    \centering
+    \small
+    \begin{tikzpicture}[scale = 1]
+        \draw[color = black!40,draw=white,fill = green!10] (-0.65,0.7) rectangle (6.65,-0.32);
+        \node[font=\footnotesize] at (3,0.5) {PriorityQueue};
+        \node[color = white, fill = green!60!black] (item1) at (0,0) {item1};
+        \node[color = white, fill = green!60!black] (item2) at (1.2,0) {item2};
+        \node[color = white, fill = green!60!black] (item3) at (2.4,0) {item3};
+        \node[color = white, fill = green!60!black] (item4) at (3.6,0) {item4};
+        \node[color = white, fill = green!60!black] (itemN) at (6,0) {itemN};
+        \draw [dashed] (item4) -- (itemN);
+        \node (peek) at (-1.5,1) {peek()};
+        \node (take) at (-2,0) {take()};
+        \node (poll) at (-1.5,-1) {poll()};
+        \foreach \node in {peek, take, poll} {
+            \draw [-Stealth] (\node) -- (item1);
+        }
+        \node (offer) at (7.5,1) {offer()};
+        \node (put) at (7.5,-1) {put()};
+        \foreach \node in {offer, put} {
+            \draw [-Stealth] (\node) -- (itemN);
+        }
+        \draw[decorate,decoration={brace,mirror,raise=10pt,amplitude=2mm}] (0,0) -- (6,0);
+        \node[color = white, fill = brown!80] (lock) at (3,-1) {lock};
+        \node[color = white, fill = brown!60, text width=3em, align=center, font = \scriptsize] (AQS) at (2,-2.5) {AQS 阻塞队列};
+        \node[color = white, fill = brown!60, text width=3em, align=center, font = \scriptsize] (available) at (4,-2.5) {available 条件队列};
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (lock) -- (available);
+        \draw [dotted, {Stealth[round]}-{Stealth[round]}, align = center] (lock) -- (AQS);
+    \end{tikzpicture}
+    \caption{DelayQueue}
+    \label{fig:DelayQueue}
+\end{figure}
+
+Queue 到这里就介绍完了，对入门来说非常详细，并发容器中还有几个 Deque 其原理和对应的 Queue 类似，不再赘述。 
+
+\subsection{Map}
+
+\subsubsection{ConcurrentHashMap}
+
+\newpage
