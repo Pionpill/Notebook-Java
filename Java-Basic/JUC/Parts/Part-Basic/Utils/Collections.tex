@@ -1,4 +1,7 @@
 \section{并发集合}
+
+本节默认读者看过 utils 包下非并发集合，掌握Java的基本数据结构。
+
 \subsection{List}
 
 JUC 只提供了一个并发列表，采用了写时复制策略。
@@ -121,6 +124,34 @@ static final class COWIterator<E> implements ListIterator<E> {
     }
 }
 
+\subsection{Set}
+
+\subsubsection{CopyOnWriteSet}
+
+并发集合(Set)，JUC 也只提供了一个 CopyOnWriteSet，从名字就知道他是用的写时复制技术，本质上它是用 CopyOnWriteArrayList 实现的\footnote{最常用的非并发集合是 HashSet，采用 HashMap 实现，这何尝不是一种牛头人行为。}。
+
+\begin{Java}
+public class CopyOnWriteArraySet<E> extends AbstractSet<E> implements java.io.Serializable {
+
+    private final CopyOnWriteArrayList<E> al;
+    public CopyOnWriteArraySet() {
+        al = new CopyOnWriteArrayList<E>();
+    }
+
+    public boolean add(E e) {
+        return al.addIfAbsent(e);
+    }
+
+    public boolean contains(Object o) {
+        return al.contains(o);
+    }
+
+    public boolean remove(Object o) {
+        return al.remove(o);
+    }
+}
+\end{Java}
+
 \subsection{Queue}
 
 JUC 提供了很多队列，多到数量是其他容器数量之和。大致可分为两种:
@@ -178,10 +209,6 @@ ConcurrentLinkedQueue 有一个特殊之处，tail 节点并不一定是尾节�
     \item ConcurrentLinkedQueue 采用 CAS 保证原子性，因此可能会导致 size 计算失误。
     \item ConcurrentLinkedQueue 对 tail 节点进行了优化，每添加两次元素，tail 节点移动一次，减少 CAS 操作。
 \end{itemize}
-
-\paragraph*{源码解析}
-
-ConcurrentLinkedQueue 的源码理解起来庞复杂，可以跳过。(这里有空再补)
 
 \subsubsection{LinkedBlockingQueue}
 
@@ -534,5 +561,142 @@ Queue 到这里就介绍完了，对入门来说非常详细，并发容器中�
 \subsection{Map}
 
 \subsubsection{ConcurrentHashMap}
+
+本文默认讲 Java8 的 ConcurrentHashMap 逻辑，具体代码为 Java17。ConcurrentHashMap 的实现非常复杂，源码有 6k+ 行，因此源码解析和 Java7 的实现方案不再赘述(写不下)。
+
+ConcurrentHashMap 基于 HashMap 逻辑，实现了针对数组元素的细粒度锁，相比 HashTable 有更好的并发性。
+
+\begin{Java}
+public class ConcurrentHashMap<K,V> extends AbstractMap<K,V> implements ConcurrentMap<K,V>, Serializable
+\end{Java}
+
+\paragraph*{锁粒度}
+
+我们知道，HashTable 使用 synchronized 锁对象的方式解决了多线程问题，但如果以整个容器为一个资源进行锁定，那么就变为了串行操作。而根据hash表的特性，具有冲突的操作只会出现在同一槽位，而与其它槽位的操作互不影响。
+
+因此可以将资源锁粒度缩小到槽位(数组节点)上，这样热点一分散，冲突的概率就大大降低，并发性能就能得到很好的增强。
+
+ConcurrentHashMap使用JUC包中通过直接操作内存中的对象，将比较与替换合并为一个原子操作的乐观锁形式（CAS）来进行简单的值替换操作，对于一些含有复杂逻辑的流程对Node节点对象使用synchronize进行同步。
+
+\paragraph*{并发扩容}
+
+ConcurrentHashMap 扩容采用多线程扩容方式提高了扩容的效率，扩容时不允许进行其他操作。在扩容过程中，ConcurrentHashMap 会被分成多端由不同的空闲线程将各段存储到新的容器中。
+
+\paragraph*{主要方法} put get 方法的逻辑与主要代码
+
+在执行 put 方法时，主要使用如下逻辑:
+\begin{itemize}
+    \item 由 spread 函数根据 key 获取 hash 值。
+    \item 判断数组是否需要初始化。
+    \item 定位到数组的 Node 节点 f。
+    \begin{itemize}
+        \item 槽位为空(f 为 null)，采用 CAS 方式添加。
+        \item 如果处于扩容阶段，线程协助扩容。
+        \item 其他情况，通过 synchronized 锁住节点，根据结构不同(链表或红黑树)插入新界节点。
+    \end{itemize}
+    \item 链表长度达到 8 ，进行扩容。
+\end{itemize}
+
+\begin{Java}
+final V putVal(K key, V value, boolean onlyIfAbsent) {
+    if (key == null || value == null) throw new NullPointerException();
+    // 计算 hash 值
+    int hash = spread(key.hashCode());
+    for (Node<K,V>[] tab = table;;) {
+        Node<K,V> f; int n, i, fh; K fk; V fv;
+        // 判断是否要初始化
+        if (tab == null || (n = tab.length) == 0)
+            tab = initTable();
+        // 空槽位，添加节点
+        else if ((f = tabAt(tab, i = (n - 1) & hash)) == null) {
+            if (casTabAt(tab, i, null, new Node<K,V>(hash, key, value)))
+                break;                   
+        }
+        // 处于扩容阶段
+        else if ((fh = f.hash) == MOVED)
+            tab = helpTransfer(tab, f);
+        // 非空槽位，锁住对应槽位并添加新节点
+        else {
+            synchronized (f) {
+                // 省略链表与红黑树添加节点具体操作
+            }
+            if (binCount != 0) {
+                // 链表长度大于8，转换为红黑树
+                if (binCount >= TREEIFY_THRESHOLD)
+                    treeifyBin(tab, i);
+                if (oldVal != null)
+                    return oldVal;
+                break;
+            }
+        }
+    }
+    addCount(1L, binCount);
+    return null;
+}
+\end{Java}
+
+get 和 hashMap 类似，没有加锁，因为 Node 元素是 volatile 修饰的:
+
+\begin{Java}
+public V get(Object key) {
+    Node<K,V>[] tab; Node<K,V> e, p; int n, eh; K ek;
+    // 计算 hash 值
+    int h = spread(key.hashCode());
+    // 数组是否为空，槽位是否为空
+    if ((tab = table) != null && (n = tab.length) > 0 &&
+        (e = tabAt(tab, (n - 1) & h)) != null) {
+        // 在数组上，直接放回
+        if ((eh = e.hash) == h) {
+            if ((ek = e.key) == key || (ek != null && key.equals(ek)))
+                return e.val;
+        }
+        // 红黑树结构
+        else if (eh < 0)
+            return (p = e.find(h, key)) != null ? p.val : null;
+        // 链表结构
+        while ((e = e.next) != null) {
+            if (e.hash == h &&
+                ((ek = e.key) == key || (ek != null && key.equals(ek))))
+                return e.val;
+        }
+    }
+    return null;
+}
+\end{Java}
+
+
+
+看样子已经完成被 CopyOnWriteArrayList 填满了。
+
+\subsection*{并发集合总结}
+
+\begin{table}[H]
+    \centering
+    \caption{并发集合总结}
+    \label{table:并发集合总结}
+    \setlength{\tabcolsep}{4mm}
+    \begin{tabular}{l|l|l|llllll}
+        \toprule
+        \textbf{数据结构} & \textbf{类} & \textbf{锁类型} & \textbf{技术} & \textbf{适用情形} \\ 
+        \midrule
+        \multirow{2}{*}{List} & Vector & synchronized & 锁对象 & - \\
+         & CopyOnWriteriteArrayList & synchronized & 写时复制 & 读多写少 \\
+        \midrule
+        \multirow{1}{*}{Set} & CopyOnWriteSet & synchronized & 写时复制 & 读多写少 \\
+        \midrule
+        \multirow{2}{*}{Queue} & ConcurrentLinkedQueue & CAS & - & 默认选项 \\
+         & BlockingQueue & ReentrantLock & 数组或元素锁 & 读多写少 \\
+         \midrule
+         \multirow{2}{*}{Map} & HashTable & synchronized & 锁对象 & - \\
+          & ConcurrentHashMap & 组合 & 锁槽位 & 默认选项 \\
+        \bottomrule
+    \end{tabular}
+\end{table}
+
+针对 Queue 和 Map 很好选择： ConcurrentLinkedQueue 和 ConcurrentHashMap，极少情况才会考虑其他选项。比较特殊的 Stack，非并发情况下使用 LinkedList，否则使用 Stack。而 List 和 Set 则需要慎重考虑:
+
+针对 List，由于 CopyOnWriteArrayList 采用的是写时复制策略，在数据量大或者需要频繁修改数据的情况，性能非常低。因此我们首先要考虑的是也不应该采用高并发 List，能否采用其他数据结构或者将 List 放入非并发情况下。如果一定要用，则需要知道写时复制的缺陷，如果不能接受，建议派生 ArrayList，最后才考虑 CopyOnWriteArrayList。
+
+针对 Set，同样需要考虑写时复制的缺陷。Java 没有给出高效率的并发 List 和 Set 是有原因的，这两个数据结构在多线程中并没有其他两个常用，因此在设计之初就需要考虑是否真的有必要使用这两种数据结构的并发版本。
 
 \newpage
