@@ -20,7 +20,7 @@ private final byte[] value;
 
 在这段代码中，有三个需要注意的地方:
 \begin{itemize}
-    \item \textbf{@Stable}: 仅允许被修饰的字段被修改至多一次，这个注解的声明如下:
+    \item \textbf{@Stable}: 仅允许被修饰的字段被修改至多一次，JVM 会将对应的值看作常量，并对其进行优化:
 \begin{Java}
 @Target(ElementType.FIELD)
 @Retention(RetentionPolicy.RUNTIME)
@@ -30,7 +30,9 @@ public @interface Stable { }
     \item \textbf{final}: 常量，被 final 修饰意味着对象在 JVM 中初始化时，在一般成员赋值之前，该成员的数值就已经被确定，并且随后无法修改，那么反射机制也不能堆它进行改动了。
 \end{itemize}
 
-以上，private 和 final 组合的效果其实和 @Stable 效果类似，这两者的结合让 value 值无法被二次修改，这也就决定了 String 类型的对象是不可变的。如果要钻牛角尖的话，String 是被 final 修饰的，这也决定了 String 无法被继承，无法通过子类实现可变。
+以上，private 和 final 组合的效果让 value 值无法被二次修改，这也就决定了 String 类型的对象是不可变的。如果要钻牛角尖的话，String 是被 final 修饰的，这也决定了 String 无法被继承，无法通过子类实现可变。
+
+实际上，如果不考虑安全性，可以通过反射拿到 byte[] 对象，通过下标修改值，String 不可变指的仅是拿到的数组地址不可变，不是数组中的值不可变。
 
 除了比较重要的 \texttt{value} 成员，还有一个 \texttt{coder} 下面会用到，它是用来确定编码方式的: UTF-16 或 LATIN1。
 
