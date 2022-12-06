@@ -672,30 +672,33 @@ public V get(Object key) {
 
 \begin{table}[H]
     \centering
+    \small
     \caption{并发集合总结}
     \label{table:并发集合总结}
     \setlength{\tabcolsep}{4mm}
     \begin{tabular}{l|l|l|llllll}
         \toprule
-        \textbf{数据结构} & \textbf{类} & \textbf{锁类型} & \textbf{技术} & \textbf{适用情形} \\ 
+        \textbf{数据结构} & \textbf{类/获取方式} & \textbf{锁类型} & \textbf{技术} & \textbf{适用情形} \\ 
         \midrule
-        \multirow{2}{*}{List} & Vector & synchronized & 锁对象 & - \\
+        \multirow{2}{*}{List} & Collections.synchronizedList(List) & synchronized & 锁对象 & - \\
          & CopyOnWriteriteArrayList & synchronized & 写时复制 & 读多写少 \\
         \midrule
-        \multirow{1}{*}{Set} & CopyOnWriteSet & synchronized & 写时复制 & 读多写少 \\
+        \multirow{2}{*}{Set} & Collections.synchronizedMap(Map) & synchronized & 锁对象 & - \\
+         & CopyOnWriteSet & synchronized & 写时复制 & 读多写少 \\
         \midrule
         \multirow{2}{*}{Queue} & ConcurrentLinkedQueue & CAS & - & 默认选项 \\
          & BlockingQueue & ReentrantLock & 数组或元素锁 & 读多写少 \\
          \midrule
-         \multirow{2}{*}{Map} & HashTable & synchronized & 锁对象 & - \\
-          & ConcurrentHashMap & 组合 & 锁槽位 & 默认选项 \\
+        \multirow{2}{*}{Map} & ConcurrentHashMap & CAS+syn & 锁槽位 & 默认选项 \\
+         & HashTable & synchronized & 锁对象 & - \\
+          
         \bottomrule
     \end{tabular}
 \end{table}
 
 针对 Queue 和 Map 很好选择： ConcurrentLinkedQueue 和 ConcurrentHashMap，极少情况才会考虑其他选项。比较特殊的 Stack，非并发情况下使用 LinkedList，否则使用 Stack。而 List 和 Set 则需要慎重考虑:
 
-针对 List，由于 CopyOnWriteArrayList 采用的是写时复制策略，在数据量大或者需要频繁修改数据的情况，性能非常低。因此我们首先要考虑的是也不应该采用高并发 List，能否采用其他数据结构或者将 List 放入非并发情况下。如果一定要用，则需要知道写时复制的缺陷，如果不能接受，建议派生 ArrayList，最后才考虑 CopyOnWriteArrayList。
+针对 List，由于 CopyOnWriteArrayList 采用的是写时复制策略，在数据量大或者需要频繁修改数据的情况，性能非常低。因此我们首先要考虑的是也不应该采用高并发 List，能否采用其他数据结构或者将 List 放入非并发情况下。如果一定要用，则需要知道写时复制的缺陷，如果不能接受，建议派生 ArrayList 或用 Collections.synchronizedList 构建并发列表，最后才考虑 CopyOnWriteArrayList。
 
 针对 Set，同样需要考虑写时复制的缺陷。Java 没有给出高效率的并发 List 和 Set 是有原因的，这两个数据结构在多线程中并没有其他两个常用，因此在设计之初就需要考虑是否真的有必要使用这两种数据结构的并发版本。
 
